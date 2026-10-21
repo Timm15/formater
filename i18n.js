@@ -3,6 +3,9 @@
 (function () {
   'use strict';
   const D = {
+"Нейросеть не запустилась на этом устройстве, поэтому использован простой способ. Он хорошо работает на однотонном фоне.": ["The neural network couldn't start on this device, so a simple method was used. It works well on plain backgrounds.", "此设备无法运行神经网络，因此使用了简单方法。它在纯色背景上效果较好。"],
+"простой способ": ["basic method", "简单方法"],
+"Не удалось открыть фото: файл повреждён или этот формат не поддерживается браузером.": ["Couldn't open the photo: the file is damaged or this format isn't supported by the browser.", "无法打开照片：文件已损坏，或浏览器不支持此格式。"],
 "Конвертирует, сжимает и обрезает фото, видео, аудио, PDF, таблицы и документы. Перетащите файлы, выберите формат и скачайте результат.": [
 "Converts, compresses and trims photos, video, audio, PDFs, spreadsheets and documents. Drop your files, pick a format and download the result.",
 "在浏览器中转换、压缩和剪辑照片、视频、音频、PDF、表格和文档。拖入文件，选择格式，下载结果。"
@@ -954,6 +957,7 @@
     [/^Убрать (.+) из списка$/, (m, L) => L === 1 ? `Remove ${m[1]} from the list` : `从列表中移除 ${m[1]}`],
     [/^Убрать (.+)$/, (m, L) => (L === 1 ? 'Remove ' : '移除 ') + m[1]],
     [/^Формат для (.+)$/, (m, L) => (L === 1 ? 'Format for ' : '格式：') + m[1]],
+    [/^Не удалось убрать фон: (.+)$/, (m, L) => (L === 1 ? "Couldn't remove the background: " : '无法去除背景：') + m[1]],
     [/^Аудио пересохраняется в MP3 (\d+) кбит\/с\.$/, (m, L) => L === 1 ? `Audio is re-saved as MP3 ${m[1]} kbps.` : `音频将重新保存为 MP3 ${m[1]} kbps。`],
   ];
   const UNITS = { 'Б': 'B', 'КБ': 'KB', 'МБ': 'MB', 'ГБ': 'GB' };
