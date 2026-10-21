@@ -348,10 +348,6 @@ button, select, summary, .drop { touch-action: manipulation; }
           <span class="estimate" id="estimate" hidden></span>
           <button class="btn stop" id="stop" type="button" hidden>Остановить</button>
           <span class="spacer"></span>
-          <button class="btn" id="add" type="button">
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>
-            Добавить файлы
-          </button>
           <button class="btn ghost" id="clear" type="button">Очистить</button>
         </div>
         <p class="hint run-note" id="run-note" hidden></p>
@@ -910,7 +906,6 @@ button, select, summary, .drop { touch-action: manipulation; }
     $('go').disabled = !workable || busy;
     $('go').hidden = busy; $('stop').hidden = !busy;
     $('clear').disabled = busy;
-    $('add').disabled = busy;
     const cats = new Set(items.filter(it => it.kind).map(it => catOf(it.kind)));
     renderTips(cats); applyRelevance(cats); updatePdfHint(); updateRunNote(); updateEstimate();
     items.filter(it => it.edit).forEach(it => drawWave(it));
@@ -1335,7 +1330,6 @@ button, select, summary, .drop { touch-action: manipulation; }
 
   // ---------- Input: picker, drag and drop, paste ----------
   const drop = $('drop');
-  $('add').addEventListener('click', () => { if (!busy) $('picker').click(); });
   $('picker').addEventListener('change', e => { addFiles([...e.target.files]); e.target.value = ''; });
   ['dragenter', 'dragover'].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
   ['dragleave', 'drop'].forEach(ev => document.addEventListener(ev, e => {
