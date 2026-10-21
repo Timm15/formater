@@ -168,7 +168,7 @@ select { background: var(--sunken); border: 1px solid var(--line); border-radius
 .spacer { flex: 1; }
 
 /* Results */
-.res { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--line); }
+.res { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--line); }
 .res:first-child { border-top: 0; }
 
 /* Settings rail */
@@ -249,6 +249,9 @@ details.tip ul { margin: 0 0 8px; padding-left: 18px; color: var(--muted); font-
 .trim-len { color: var(--muted); font-variant-numeric: tabular-nums; }
 .trim-row .btn { padding: 7px 12px; }
 .run-note { padding: 0 16px 14px; margin: 0; }
+.lang { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.lang button { border: 0; background: transparent; padding: 5px 10px; border-radius: 7px; cursor: pointer; color: var(--muted); font-size: 13px; min-height: 30px; }
+.lang button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .estimate { font-size: 13px; color: var(--muted); min-width: 0; flex: 1 1 180px; }
 @media (max-width: 560px) {
   .modes { display: flex; }
@@ -287,6 +290,11 @@ button, select, summary, .drop { touch-action: manipulation; }
         <h1>Formater</h1>
       </div>
       <p class="tagline">Конвертирует, сжимает и обрезает фото, видео, аудио, PDF, таблицы и документы. Перетащите файлы, выберите формат и скачайте результат.</p>
+    </div>
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" data-lang="ru" aria-pressed="false">RU</button>
+      <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      <button type="button" data-lang="zh" aria-pressed="false">中文</button>
     </div>
     <span class="privacy">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
@@ -553,6 +561,7 @@ button, select, summary, .drop { touch-action: manipulation; }
 
 <div class="toast" id="toast" role="status" hidden></div>
 
+<script src="i18n.js"></script>
 <script>
 (() => {
   'use strict';
@@ -675,6 +684,7 @@ button, select, summary, .drop { touch-action: manipulation; }
 
   // ---------- Helpers ----------
   const $ = id => document.getElementById(id);
+  const WORD = k => (window.I18N ? window.I18N.w(k) : k); // words that go into output file names
   function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
   function fmtSize(n) {
     if (n < 1024) return n + ' Б';
@@ -1337,7 +1347,7 @@ button, select, summary, .drop { touch-action: manipulation; }
   document.addEventListener('paste', e => {
     const list = [...(e.clipboardData ? e.clipboardData.files : [])];
     if (!list.length) return;
-    addFiles(list.map((f, i) => f.name && f.name !== 'image.png' ? f : new File([f], `вставка-${Date.now()}-${i + 1}.${(f.type.split('/')[1] || 'png').replace('jpeg', 'jpg')}`, { type: f.type })));
+    addFiles(list.map((f, i) => f.name && f.name !== 'image.png' ? f : new File([f], `${WORD('вставка')}-${Date.now()}-${i + 1}.${(f.type.split('/')[1] || 'png').replace('jpeg', 'jpg')}`, { type: f.type })));
     toast('Добавлено из буфера обмена');
   });
 
@@ -1638,7 +1648,7 @@ button, select, summary, .drop { touch-action: manipulation; }
           const c = await renderPdfPage(doc, pages[i]);
           const blob = await canvasBlob(c, MIME[target], q);
           c.width = c.height = 0;
-          const suffix = doc.numPages > 1 ? `-стр${String(pages[i]).padStart(pad, '0')}` : '';
+          const suffix = doc.numPages > 1 ? `${WORD('-стр')}${String(pages[i]).padStart(pad, '0')}` : '';
           out.push({ name: `${base}${suffix}.${target}`, blob });
         }
         return out;
@@ -1665,7 +1675,7 @@ button, select, summary, .drop { touch-action: manipulation; }
         group.push({ c, h }); height += h;
       }
       await flush();
-      out.forEach((o, i) => { o.name = out.length === 1 ? `${base}-все-страницы.${target}` : `${base}-часть${i + 1}.${target}`; });
+      out.forEach((o, i) => { o.name = out.length === 1 ? `${base}${WORD('-все-страницы')}.${target}` : `${base}${WORD('-часть')}${i + 1}.${target}`; });
       return out;
     } finally { doc.destroy(); }
   }
@@ -2078,7 +2088,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
         img.data[i * 4 + 3] = Math.round(img.data[i * 4 + 3] * t * t * (3 - 2 * t));
       }
       ctx.putImageData(img, 0, 0);
-      return { name: `${baseOf(item.file.name)}-без-фона.png`, blob: await encodeCanvas(c, 'png') };
+      return { name: `${baseOf(item.file.name)}${WORD('-без-фона')}.png`, blob: await encodeCanvas(c, 'png') };
     } finally { d.done(); }
   }
   async function runBg(todo) {
@@ -2260,7 +2270,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       toPdf.forEach(it => { it.status = 'working'; it.note = 'собираю PDF'; });
       renderQueue();
       try {
-        addResult(await raceStop(imagesToPdf(toPdf, `картинки-${toPdf.length}.pdf`)));
+        addResult(await raceStop(imagesToPdf(toPdf, `${WORD('картинки')}-${toPdf.length}.pdf`)));
         toPdf.forEach(it => { it.status = 'done'; it.note = 'в общем PDF'; });
       } catch (e) { console.error(e); toPdf.forEach(it => { it.status = 'error'; it.note = friendly(e); }); }
       renderQueue();
@@ -2290,7 +2300,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       await tick();
       try {
         const raw = await raceStop(convertOne(it));
-        raw.forEach(o => addResult({ name: o.name.replace(/(\.[^.]+)$/, ' (обрезка)$1'), blob: o.blob }, undefined, true));
+        raw.forEach(o => addResult({ name: o.name.replace(/(\.[^.]+)$/, ` ${WORD('(обрезка)')}$1`), blob: o.blob }, undefined, true));
         renderResults();
         it.status = 'done'; it.note = `Осталось ${fmtT((t.end == null ? it.dur : t.end) - t.start)}`;
       } catch (e) { console.error(e); it.status = 'error'; it.note = friendly(e); }
