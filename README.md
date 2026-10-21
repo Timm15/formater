@@ -6,4 +6,4 @@
 
 Весь сайт — один файл `index.html`. Библиотеки конвертации подгружаются с cdn.jsdelivr.net по мере надобности.
 
-Удаление фона работает на модели U²-Net (u2netp, лицензия Apache 2.0, файл `models/u2netp.onnx`) и onnxruntime-web: всё считается в браузере.
+Удаление фона работает на моделях U²-Net (u2netp и silueta, лицензия Apache 2.0, папка `models/`) и onnxruntime-web: всё считается в браузере.

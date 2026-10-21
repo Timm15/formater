@@ -515,7 +515,14 @@ button, select, summary, .drop { touch-action: manipulation; }
         <div class="set">
           <h3>Удаление фона</h3>
           <p class="hint">Нейросеть находит главный предмет на фото и делает всё остальное прозрачным. Всё считается в вашем браузере, фото никуда не отправляется.</p>
-          <p class="hint">При первом запуске скачивается модель, около 5 МБ и библиотека около 10 МБ. Потом работает быстрее. Большие фото уменьшаются до 2048 px по длинной стороне.</p>
+          <div class="field">
+            <span id="bgq-label">Модель</span>
+            <div class="seg words" role="group" aria-labelledby="bgq-label" id="bgq">
+              <button type="button" data-v="fast" aria-pressed="false">Быстро</button>
+              <button type="button" data-v="hq" aria-pressed="true">Точнее</button>
+            </div>
+          </div>
+          <p class="hint">«Точнее» скачивает модель около 42 МБ один раз: она лучше справляется с руками, волосами и мелкими деталями. «Быстро» весит около 5 МБ, но чаще ошибается. Большие фото уменьшаются до 2048 px.</p>
         </div>
       </div>
       <!-- Trim mode -->
@@ -703,7 +710,7 @@ button, select, summary, .drop { touch-action: manipulation; }
   let pixelNote = false;
 
   // ---------- Settings ----------
-  const opts = { mode: 'convert', quality: 0.9, maxSide: 0, bg: '#ffffff', page: 'fit', merge: true, dpi: 150, sep: ';', gifw: 480, giff: 12, level: 'medium', cfmt: 'same', targetKb: 0, cmax: 0, vres: 'auto', mute: false, pdfPages: '', pdfJoin: false, pack: 'auto' };
+  const opts = { mode: 'convert', quality: 0.9, maxSide: 0, bg: '#ffffff', page: 'fit', merge: true, dpi: 150, sep: ';', gifw: 480, giff: 12, level: 'medium', cfmt: 'same', targetKb: 0, cmax: 0, vres: 'auto', mute: false, pdfPages: '', pdfJoin: false, pack: 'auto', bgq: 'hq' };
   const store = {
     get() { try { return JSON.parse(localStorage.getItem('formater-opts') || 'null'); } catch { return null; } },
     set(v) { try { localStorage.setItem('formater-opts', JSON.stringify(v)); } catch {} },
@@ -732,6 +739,7 @@ button, select, summary, .drop { touch-action: manipulation; }
   bindSeg('cfmt', 'cfmt', String, () => renderQueue());
   bindSeg('vres', 'vres', String);
   bindSeg('pack', 'pack', String);
+  bindSeg('bgq', 'bgq', String);
   $('pdf-pages').addEventListener('input', e => { opts.pdfPages = e.target.value; });
   $('pdf-join').checked = opts.pdfJoin;
   $('pdf-join').addEventListener('change', e => { opts.pdfJoin = e.target.checked; store.set(opts); });
@@ -1963,22 +1971,73 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
 
   // ---------- Background removal ----------
   const bgOk = it => it.kind === 'image' && it.ext !== 'svg';
-  let bgSession = null;
-  function bgModel() {
-    if (!bgSession) {
-      bgSession = (async () => {
+  const BG_MODELS = { fast: 'models/u2netp.onnx', hq: 'models/silueta.onnx' };
+  const bgSessions = {};
+  async function fetchModel(url, onProgress) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Не удалось загрузить модель удаления фона. Проверьте интернет и попробуйте ещё раз.');
+    const total = +res.headers.get('content-length') || 0;
+    if (!res.body || !total) return res.arrayBuffer();
+    const reader = res.body.getReader(), buf = new Uint8Array(total);
+    let got = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf.set(value, got); got += value.length;
+      onProgress(Math.round(got / total * 100));
+    }
+    return buf.buffer;
+  }
+  function bgModel(onProgress) {
+    const key = opts.bgq in BG_MODELS ? opts.bgq : 'hq';
+    if (!bgSessions[key]) {
+      bgSessions[key] = (async () => {
         await need('ort');
         const ort = window.ort;
         ort.env.wasm.wasmPaths = CDN + 'onnxruntime-web@1.20.1/dist/';
         ort.env.wasm.numThreads = 1; // threads need a cross-origin isolated page, which static hosting can't give
-        const res = await fetch('models/u2netp.onnx');
-        if (!res.ok) throw new Error('Не удалось загрузить модель удаления фона. Проверьте интернет и попробуйте ещё раз.');
-        return ort.InferenceSession.create(await res.arrayBuffer(), { executionProviders: ['wasm'] });
-      })().catch(e => { bgSession = null; throw e; });
+        return ort.InferenceSession.create(await fetchModel(BG_MODELS[key], onProgress), { executionProviders: ['wasm'] });
+      })().catch(e => { delete bgSessions[key]; throw e; });
     }
-    return bgSession;
+    return bgSessions[key];
   }
-  async function removeBackground(item) {
+  // Mean over a (2r+1) square window, edges clamped
+  function boxMean(a, W, H, r) {
+    const tmp = new Float32Array(W * H), out = new Float32Array(W * H);
+    for (let y = 0; y < H; y++) {
+      const o = y * W; let sum = 0;
+      for (let x = 0; x <= Math.min(r, W - 1); x++) sum += a[o + x];
+      for (let x = 0; x < W; x++) {
+        const lo = Math.max(0, x - r), hi = Math.min(W - 1, x + r);
+        tmp[o + x] = sum / (hi - lo + 1);
+        if (x + r + 1 < W) sum += a[o + x + r + 1];
+        if (x - r >= 0) sum -= a[o + x - r];
+      }
+    }
+    for (let x = 0; x < W; x++) {
+      let sum = 0;
+      for (let y = 0; y <= Math.min(r, H - 1); y++) sum += tmp[y * W + x];
+      for (let y = 0; y < H; y++) {
+        const lo = Math.max(0, y - r), hi = Math.min(H - 1, y + r);
+        out[y * W + x] = sum / (hi - lo + 1);
+        if (y + r + 1 < H) sum += tmp[(y + r + 1) * W + x];
+        if (y - r >= 0) sum -= tmp[(y - r) * W + x];
+      }
+    }
+    return out;
+  }
+  // Guided filter: pulls the soft mask's edge onto the real edges of the photo (hair, fur, thin parts)
+  function guidedMask(I, p, W, H, r, eps) {
+    const N = W * H, Ip = new Float32Array(N), II = new Float32Array(N);
+    for (let i = 0; i < N; i++) { Ip[i] = I[i] * p[i]; II[i] = I[i] * I[i]; }
+    const mI = boxMean(I, W, H, r), mp = boxMean(p, W, H, r), mIp = boxMean(Ip, W, H, r), mII = boxMean(II, W, H, r);
+    const a = new Float32Array(N), b = new Float32Array(N);
+    for (let i = 0; i < N; i++) { a[i] = (mIp[i] - mI[i] * mp[i]) / (mII[i] - mI[i] * mI[i] + eps); b[i] = mp[i] - a[i] * mI[i]; }
+    const ma = boxMean(a, W, H, r), mb = boxMean(b, W, H, r), q = new Float32Array(N);
+    for (let i = 0; i < N; i++) q[i] = Math.min(1, Math.max(0, ma[i] * I[i] + mb[i]));
+    return q;
+  }
+  async function removeBackground(item, onProgress) {
     const d = await decodeImage(item.file, item.ext);
     try {
       const c = drawImage(d, false, 2048);
@@ -1992,7 +2051,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       const mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225], N = S * S;
       const input = new Float32Array(3 * N);
       for (let i = 0; i < N; i++) for (let k = 0; k < 3; k++) input[k * N + i] = (px[i * 4 + k] / max - mean[k]) / std[k];
-      const sess = await bgModel();
+      const sess = await bgModel(onProgress);
       const ort = window.ort;
       const out = await sess.run({ [sess.inputNames[0]]: new ort.Tensor('float32', input, [1, 3, S, S]) });
       const m = out[sess.outputNames[0]].data;
@@ -2002,13 +2061,20 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       const mg = mc.getContext('2d'), md = mg.createImageData(S, S);
       for (let i = 0; i < N; i++) { const v = Math.round((m[i] - lo) / (hi - lo || 1) * 255); md.data[i * 4] = md.data[i * 4 + 1] = md.data[i * 4 + 2] = v; md.data[i * 4 + 3] = 255; }
       mg.putImageData(md, 0, 0);
-      // Stretch the mask to the photo's size and use it as the alpha channel
+      // Stretch the mask to the photo's size, then snap its edge to the photo with the guided filter
       const big = document.createElement('canvas'); big.width = W; big.height = H;
       const bg = big.getContext('2d'); bg.imageSmoothingQuality = 'high'; bg.drawImage(mc, 0, 0, W, H);
       const mask = bg.getImageData(0, 0, W, H).data;
       const ctx = c.getContext('2d'), img = ctx.getImageData(0, 0, W, H);
-      for (let i = 0; i < W * H; i++) {
-        const t = Math.min(1, Math.max(0, (mask[i * 4] / 255 - 0.2) / 0.6));
+      const P = W * H, guide = new Float32Array(P), soft = new Float32Array(P);
+      for (let i = 0; i < P; i++) {
+        guide[i] = (0.299 * img.data[i * 4] + 0.587 * img.data[i * 4 + 1] + 0.114 * img.data[i * 4 + 2]) / 255;
+        soft[i] = mask[i * 4] / 255;
+      }
+      await tick();
+      const fine = guidedMask(guide, soft, W, H, Math.max(4, Math.round(Math.max(W, H) / 160)), 1e-3);
+      for (let i = 0; i < P; i++) {
+        const t = Math.min(1, Math.max(0, (fine[i] - 0.25) / 0.5));
         img.data[i * 4 + 3] = Math.round(img.data[i * 4 + 3] * t * t * (3 - 2 * t));
       }
       ctx.putImageData(img, 0, 0);
@@ -2018,10 +2084,10 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   async function runBg(todo) {
     for (const it of todo) {
       if (stopRequested) { it.status = 'error'; it.note = 'Остановлено'; continue; }
-      it.status = 'working'; it.note = bgSession ? '' : 'загружаю модель'; renderQueue();
+      it.status = 'working'; it.note = bgSessions[opts.bgq] ? '' : 'загружаю модель'; renderQueue();
       await tick();
       try {
-        addResult(await removeBackground(it), undefined, true);
+        addResult(await raceStop(removeBackground(it, pct => setNote(it, `загружаю модель ${pct}%`))), undefined, true);
         renderResults();
         it.status = 'done'; it.note = '';
       } catch (e) { console.error(e); it.status = 'error'; it.note = friendly(e); }
@@ -2170,9 +2236,19 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
 
   let stopRequested = false;
   let activeJob = null;
+  // Waiting steps (library downloads, decoding, the model) can't check the flag, so the click rejects them directly
+  const stopWaiters = new Set();
+  function raceStop(p) {
+    return new Promise((res, rej) => {
+      if (stopRequested) { p.catch(() => {}); return rej(new Stopped()); }
+      stopWaiters.add(rej);
+      p.then(v => { stopWaiters.delete(rej); res(v); }, e => { stopWaiters.delete(rej); rej(e); });
+    });
+  }
   $('stop').addEventListener('click', () => {
     stopRequested = true;
     $('stop').disabled = true;
+    stopWaiters.forEach(rej => rej(new Stopped())); stopWaiters.clear();
     if (activeJob) activeJob.cancel().catch(() => {});
   });
 
@@ -2184,7 +2260,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       toPdf.forEach(it => { it.status = 'working'; it.note = 'собираю PDF'; });
       renderQueue();
       try {
-        addResult(await imagesToPdf(toPdf, `картинки-${toPdf.length}.pdf`));
+        addResult(await raceStop(imagesToPdf(toPdf, `картинки-${toPdf.length}.pdf`)));
         toPdf.forEach(it => { it.status = 'done'; it.note = 'в общем PDF'; });
       } catch (e) { console.error(e); toPdf.forEach(it => { it.status = 'error'; it.note = friendly(e); }); }
       renderQueue();
@@ -2195,8 +2271,8 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       it.status = 'working'; it.note = ''; renderQueue();
       await tick();
       try {
-        const raw = await convertOne(it);
-        const outs = await maybePack(it, raw);
+        const raw = await raceStop(convertOne(it));
+        const outs = await raceStop(maybePack(it, raw));
         outs.forEach(o => addResult(o, undefined, true));
         renderResults();
         it.status = 'done';
@@ -2213,7 +2289,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       it.status = 'working'; it.note = ''; renderQueue();
       await tick();
       try {
-        const raw = await convertOne(it);
+        const raw = await raceStop(convertOne(it));
         raw.forEach(o => addResult({ name: o.name.replace(/(\.[^.]+)$/, ' (обрезка)$1'), blob: o.blob }, undefined, true));
         renderResults();
         it.status = 'done'; it.note = `Осталось ${fmtT((t.end == null ? it.dur : t.end) - t.start)}`;
@@ -2229,9 +2305,9 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       it.status = 'working'; it.note = ''; renderQueue();
       await tick();
       try {
-        const out = it.kind === 'image' ? await compressImage(it, plan.out)
-          : it.kind === 'video' ? await compressVideo(it, plan.out)
-          : await compressAudio(it);
+        const out = await raceStop(it.kind === 'image' ? compressImage(it, plan.out)
+          : it.kind === 'video' ? compressVideo(it, plan.out)
+          : compressAudio(it));
         const pct = Math.round((1 - out.blob.size / it.file.size) * 100);
         if (out.blob.size >= it.file.size * 0.98 && normExt(it.ext) === plan.out) {
           it.status = 'skip'; it.note = 'Файл уже сжат, сильнее не получается. Попробуйте силу «Сильно».';
