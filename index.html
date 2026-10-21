@@ -2,10 +2,11 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Formater — конвертер и компрессор файлов онлайн</title>
 <meta name="description" content="Бесплатно конвертирует и сжимает фото, видео, аудио, PDF, таблицы и документы прямо в браузере. Файлы никуда не загружаются.">
-<meta name="theme-color" content="#2448d8">
+<meta name="theme-color" content="#2448d8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1116" media="(prefers-color-scheme: dark)">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Formater — конвертер и компрессор файлов">
 <meta property="og:description" content="Фото, видео, аудио, PDF, таблицы и документы. Всё работает в браузере, файлы никуда не отправляются.">
@@ -67,7 +68,8 @@ body {
   background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 28px 48px;
+  padding-top: calc(28px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px));
 }
 .wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 22px; }
 button, select, input { font: inherit; color: inherit; }
@@ -246,6 +248,24 @@ details.tip ul { margin: 0 0 8px; padding-left: 18px; color: var(--muted); font-
 .time-in { width: 92px !important; text-align: center; }
 .trim-len { color: var(--muted); font-variant-numeric: tabular-nums; }
 .trim-row .btn { padding: 7px 12px; }
+.run-note { padding: 0 16px 14px; margin: 0; }
+button, select, summary, .drop { touch-action: manipulation; }
+
+/* Touch screens: bigger targets, and 16px fields so iOS doesn't zoom in on focus */
+@media (pointer: coarse), (max-width: 560px) {
+  input[type="number"], input[type="text"], select, .time-in { font-size: 16px; min-height: 44px; }
+  .icon-btn { width: 44px; height: 44px; }
+  .btn { min-height: 44px; }
+  .seg button { min-height: 42px; }
+  .modes button { min-height: 44px; }
+  details.tip summary { min-height: 40px; }
+  input[type="checkbox"] { width: 22px; height: 22px; }
+  .time-in { width: 104px !important; }
+  .trim-row .btn { padding: 9px 14px; }
+  .trim-wave { height: 104px; }
+  input[type="range"] { min-height: 32px; }
+  input[type="color"] { width: 48px; height: 44px; }
+}
 </style>
 </head>
 <body>
@@ -307,6 +327,7 @@ details.tip ul { margin: 0 0 8px; padding-left: 18px; color: var(--muted); font-
           <span class="spacer"></span>
           <button class="btn ghost" id="clear" type="button">Очистить</button>
         </div>
+        <p class="hint run-note" id="run-note" hidden></p>
       </section>
 
       <section class="panel" id="results-panel" aria-labelledby="r-title" hidden>
@@ -314,7 +335,7 @@ details.tip ul { margin: 0 0 8px; padding-left: 18px; color: var(--muted); font-
           <h2 id="r-title">Готово<span class="count" id="r-count"></span></h2>
           <button class="btn" id="zip" type="button">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8m0 0-3-3m3 3 3-3M3 12v1.5h10V12"/></svg>
-            Скачать всё ZIP
+            <span id="zip-label">Скачать всё ZIP</span>
           </button>
         </div>
         <ul class="rows" id="results"></ul>
@@ -639,6 +660,11 @@ details.tip ul { margin: 0 0 8px; padding-left: 18px; color: var(--muted); font-
   const canvasBlob = (c, type, q) => new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('Браузер не смог сохранить картинку.')), type, q));
   const tick = () => new Promise(r => setTimeout(r, 0));
   class Stopped extends Error { constructor() { super('Остановлено'); } }
+  // Phones: Safari allows a canvas of about 16 million pixels, so big photos are scaled down to fit
+  const IS_IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const COARSE = window.matchMedia('(pointer: coarse)').matches;
+  const MAX_PIXELS = IS_IOS ? 16e6 : COARSE ? 48e6 : 150e6;
+  let pixelNote = false;
 
   // ---------- Settings ----------
   const opts = { mode: 'convert', quality: 0.9, maxSide: 0, bg: '#ffffff', page: 'fit', merge: true, dpi: 150, sep: ';', gifw: 480, giff: 12, level: 'medium', cfmt: 'same', targetKb: 0, cmax: 0, vres: 'auto', mute: false, pdfPages: '', pdfJoin: false, pack: 'auto' };
@@ -702,9 +728,12 @@ details.tip ul { margin: 0 0 8px; padding-left: 18px; color: var(--muted); font-
     document.querySelectorAll('[data-for]').forEach(s => { s.hidden = s.dataset.for !== m; });
     $('go-label').textContent = m === 'convert' ? 'Конвертировать' : 'Сжать';
     $('bulk-wrap').hidden = m !== 'convert';
-    $('drop-text').textContent = m === 'convert'
-      ? 'или нажмите, чтобы выбрать. Можно сразу много, можно вставить картинку через Ctrl+V.'
-      : 'Фото, видео или аудио. Покажем, на сколько уменьшился каждый файл.';
+    $('drop-title').textContent = COARSE ? 'Выберите файлы' : 'Перетащите файлы сюда';
+    $('drop-text').textContent = COARSE
+      ? (m === 'convert' ? 'Нажмите, чтобы выбрать фото, видео или документы. Можно сразу несколько.' : 'Нажмите и выберите фото, видео или аудио. Покажем, на сколько уменьшился каждый файл.')
+      : (m === 'convert'
+        ? 'или нажмите, чтобы выбрать. Можно сразу много, можно вставить картинку через Ctrl+V.'
+        : 'Фото, видео или аудио. Покажем, на сколько уменьшился каждый файл.');
     items.forEach(it => { if (it.status === 'done' || it.status === 'error' || it.status === 'skip') { it.status = 'ready'; it.note = ''; } });
     renderQueue();
   }
@@ -724,6 +753,7 @@ details.tip ul { margin: 0 0 8px; padding-left: 18px; color: var(--muted); font-
       if (kind === 'image' && !['heic', 'heif', 'tif', 'tiff'].includes(ext)) item.thumb = URL.createObjectURL(file);
       if (kind === 'video') videoThumb(item);
       if (kind === 'pdf') probePdf(item);
+      if (COARSE && kind === 'video' && file.size > 300 * 1024 * 1024) toast('Большое видео: на телефоне может не хватить памяти. Для таких файлов лучше компьютер.');
       items.push(item);
     }
     renderQueue();
@@ -804,7 +834,7 @@ details.tip ul { margin: 0 0 8px; padding-left: 18px; color: var(--muted); font-
     $('go').hidden = busy; $('stop').hidden = !busy;
     $('clear').disabled = busy;
     const cats = new Set(items.filter(it => it.kind).map(it => catOf(it.kind)));
-    renderTips(cats); applyRelevance(cats); updatePdfHint();
+    renderTips(cats); applyRelevance(cats); updatePdfHint(); updateRunNote();
     items.filter(it => it.edit).forEach(it => drawWave(it));
   }
 
@@ -1113,8 +1143,43 @@ details.tip ul { margin: 0 0 8px; padding-left: 18px; color: var(--muted); font-
       if (player._url) URL.revokeObjectURL(player._url);
       player._url = URL.createObjectURL(it.file); player._id = it.id; player.src = player._url;
     }
-    const go = () => { player.currentTime = it.t0; player.play().then(tickPlay).catch(() => toast('Браузер не смог воспроизвести этот файл.')); };
-    if (player.readyState >= 1) go(); else player.addEventListener('loadedmetadata', go, { once: true });
+    // play() has to start inside the tap or iOS refuses; the jump to the start follows once the length is known
+    const seek = () => { player.currentTime = it.t0; };
+    if (player.readyState >= 1) seek(); else player.addEventListener('loadedmetadata', seek, { once: true });
+    player.play().then(tickPlay).catch(() => toast('Браузер не смог воспроизвести этот файл.'));
+  }
+  // Keep the screen awake while a job runs: a sleeping phone pauses the page
+  let wakeLock = null;
+  async function holdScreen(on) {
+    try {
+      if (on) {
+        if (navigator.wakeLock && !wakeLock) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', () => { wakeLock = null; });
+        }
+      } else if (wakeLock) { const w = wakeLock; wakeLock = null; await w.release(); }
+    } catch { wakeLock = null; }
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && busy) holdScreen(true); });
+  function updateRunNote() {
+    let t = '';
+    if (busy) t = 'Не закрывайте вкладку и не сворачивайте браузер, пока идёт обработка.';
+    else if (COARSE && items.some(i => i.kind === 'video')) t = 'Видео на телефоне обрабатывается медленнее и может не поместиться в память. Большие ролики лучше делать на компьютере.';
+    $('run-note').textContent = t; $('run-note').hidden = !t;
+  }
+  // The ZIP is built ahead of the tap: phones only allow a download that starts right from the tap
+  let zipBlob = null, zipBuilding = false, zipToken = 0;
+  const zipName = () => `formater-${new Date().toISOString().slice(0, 10)}.zip`;
+  async function prepZip() {
+    zipBlob = null;
+    const tok = ++zipToken;
+    const total = results.reduce((a, r) => a + r.blob.size, 0);
+    if (results.length < 2 || total > 400 * 1024 * 1024) { zipBuilding = false; renderResults(); return; }
+    zipBuilding = true; renderResults();
+    let blob = null;
+    try { blob = await zipOf(results.map(r => [r.name, r.blob])); } catch { blob = null; }
+    if (tok !== zipToken) return;
+    zipBlob = blob; zipBuilding = false; renderResults();
   }
   function syncTrimUi(it) {
     document.querySelectorAll(`input[data-id="${it.id}"][data-time]`).forEach(i => { i.value = fmtT(it[i.dataset.time]); });
@@ -1228,6 +1293,11 @@ details.tip ul { margin: 0 0 8px; padding-left: 18px; color: var(--muted); font-
   function drawImage(d, fill, maxSide) {
     let w = d.w, h = d.h;
     if (maxSide && Math.max(w, h) > maxSide) { const k = maxSide / Math.max(w, h); w = Math.max(1, Math.round(w * k)); h = Math.max(1, Math.round(h * k)); }
+    if (w * h > MAX_PIXELS) {
+      const k = Math.sqrt(MAX_PIXELS / (w * h));
+      w = Math.max(1, Math.floor(w * k)); h = Math.max(1, Math.floor(h * k));
+      if (!pixelNote) { pixelNote = true; toast(`Очень большая картинка уменьшена до ${Math.round(MAX_PIXELS / 1e6)} млн пикселей: больше этому устройству не потянуть.`); }
+    }
     const c = document.createElement('canvas'); c.width = w; c.height = h;
     const ctx = c.getContext('2d');
     if (fill) { ctx.fillStyle = opts.bg; ctx.fillRect(0, 0, w, h); }
@@ -1393,7 +1463,13 @@ details.tip ul { margin: 0 0 8px; padding-left: 18px; color: var(--muted); font-
     }
     return { v, a };
   }
+  function needVideoApi() {
+    if (typeof VideoDecoder === 'undefined' || typeof VideoEncoder === 'undefined') {
+      throw new Error('Этот браузер не умеет работать с видео. На iPhone нужна iOS 16.4 или новее, на Android используйте Chrome.');
+    }
+  }
   async function videoConvert(item, target) {
+    if (!AUDIO_ONLY.includes(target)) needVideoApi();
     const base = baseOf(item.file.name);
     if (target === 'gif') return [{ name: `${base}.gif`, blob: await videoToGif(item) }];
     const { v, a } = await compatCodecs(target);
@@ -1401,6 +1477,7 @@ details.tip ul { margin: 0 0 8px; padding-left: 18px; color: var(--muted); font-
     return [{ name: `${base}.${target}`, blob }];
   }
   async function videoToGif(item) {
+    needVideoApi();
     const M = await media();
     const { GIFEncoder, quantize, applyPalette } = await mod('gifenc');
     const input = new M.Input({ source: new M.BlobSource(item.file), formats: M.ALL_FORMATS });
@@ -1493,7 +1570,7 @@ details.tip ul { margin: 0 0 8px; padding-left: 18px; color: var(--muted); font-
         const c = await renderPdfPage(doc, pages[i]);
         if (!W) W = c.width;
         const h = Math.round(c.height * W / c.width);
-        const maxH = Math.min(30000, Math.floor(100e6 / W));
+        const maxH = Math.min(30000, Math.floor(Math.min(MAX_PIXELS, 100e6) / W));
         if (group.length && height + h > maxH) await flush();
         group.push({ c, h }); height += h;
       }
@@ -1849,6 +1926,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     } finally { d.done(); }
   }
   async function compressVideo(item, out) {
+    needVideoApi();
     const M = await media();
     const L = LEVELS[opts.level];
     const cap = opts.vres === 'auto' ? L.vres : +opts.vres;
@@ -1960,14 +2038,16 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     const todo = items.filter(it => it.kind);
     if (!todo.length || busy) return;
     busy = true; stopRequested = false; $('stop').disabled = false;
+    holdScreen(true);
     clearResults();
     todo.forEach(it => { it.status = 'ready'; it.note = ''; });
     renderQueue();
     try {
       if (opts.mode === 'compress') await runCompress(todo); else await runConvert(todo);
     } finally {
-      busy = false; renderQueue();
+      busy = false; holdScreen(false); renderQueue();
     }
+    prepZip();
     const ok = results.length;
     if (ok) {
       toast(stopRequested ? `Остановлено. Готово: ${files(ok)}` : `Готово: ${files(ok)}`);
@@ -1988,10 +2068,11 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     results.push(r);
     if (!defer) renderResults();
   }
-  function clearResults() { results.forEach(r => r.url && URL.revokeObjectURL(r.url)); results = []; renderResults(); }
+  function clearResults() { results.forEach(r => r.url && URL.revokeObjectURL(r.url)); results = []; zipBlob = null; zipBuilding = false; zipToken++; renderResults(); }
   function renderResults() {
     $('results-panel').hidden = !results.length;
     $('zip').hidden = results.length < 2;
+    $('zip').disabled = zipBuilding; $('zip-label').textContent = zipBuilding ? 'Готовлю ZIP…' : 'Скачать всё ZIP';
     $('r-count').textContent = results.length ? files(results.length) : '';
     $('results').innerHTML = results.map(r => {
       const ext = extOf(r.name);
@@ -2050,8 +2131,8 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   $('zip').addEventListener('click', async () => {
     const b = $('zip'); b.disabled = true;
     try {
-      const blob = await zipOf(results.map(r => [r.name, r.blob]));
-      await saveFile(`formater-${new Date().toISOString().slice(0, 10)}.zip`, blob);
+      const blob = zipBlob || await zipOf(results.map(r => [r.name, r.blob]));
+      await saveFile(zipName(), blob);
     } catch (e) { console.error(e); toast(friendly(e)); }
     finally { b.disabled = false; }
   });
