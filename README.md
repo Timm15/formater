@@ -5,3 +5,5 @@
 Сайт: https://timm15.github.io/formater/
 
 Весь сайт — один файл `index.html`. Библиотеки конвертации подгружаются с cdn.jsdelivr.net по мере надобности.
+
+Удаление фона работает на модели U²-Net (u2netp, лицензия Apache 2.0, файл `models/u2netp.onnx`) и onnxruntime-web: всё считается в браузере.

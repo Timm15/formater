@@ -305,7 +305,11 @@ button, select, summary, .drop { touch-action: manipulation; }
     </button>
     <button type="button" role="tab" id="tab-trim" data-mode="trim" aria-selected="false">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="4" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><path d="M5.2 10.4 12 2.5M10.8 10.4 4 2.5"/></svg>
-      Обрезка аудио
+      Обрезка
+    </button>
+    <button type="button" role="tab" id="tab-bg" data-mode="bg" aria-selected="false">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="5.5" r="2.5"/><path d="M3 14c0-3 2.2-4.5 5-4.5s5 1.5 5 4.5"/><path d="M1.5 4V2.5H3M13 2.5h1.5V4M1.5 12v1.5H3M13 13.5h1.5V12" stroke-width="1.2"/></svg>
+      Убрать фон
     </button>
   </div>
 
@@ -506,11 +510,19 @@ button, select, summary, .drop { touch-action: manipulation; }
           <p class="hint" id="audio-hint"></p>
         </div>
       </div>
+      <!-- Background removal -->
+      <div data-for="bg" hidden>
+        <div class="set">
+          <h3>Удаление фона</h3>
+          <p class="hint">Нейросеть находит главный предмет на фото и делает всё остальное прозрачным. Всё считается в вашем браузере, фото никуда не отправляется.</p>
+          <p class="hint">При первом запуске скачивается модель, около 5 МБ и библиотека около 10 МБ. Потом работает быстрее. Большие фото уменьшаются до 2048 px по длинной стороне.</p>
+        </div>
+      </div>
       <!-- Trim mode -->
       <div data-for="trim" hidden>
         <div class="set">
-          <h3>Обрезка аудио</h3>
-          <p class="hint">Для каждого файла откроется волна. Тяните края выбранного участка или впишите время, например 1:23.5, и прослушайте результат до сохранения.</p>
+          <h3>Обрезка аудио и видео</h3>
+          <p class="hint">Для каждого файла откроется шкала. Тяните края выбранного участка или впишите время, например 1:23.5. Участок можно прослушать до сохранения (у видео играет звук).</p>
           <p class="hint">Формат результата выбирается справа от файла. По умолчанию остаётся тот же, что был.</p>
         </div>
       </div>
@@ -554,6 +566,7 @@ button, select, summary, .drop { touch-action: manipulation; }
     pako: ['pako@1.0.11/dist/pako.min.js'],
     utif: ['utif2@4.1.0/UTIF.js'],
     upng: ['upng-js@2.1.0/UPNG.js'],
+    ort: ['onnxruntime-web@1.20.1/dist/ort.min.js'],
     mp3enc: ['@mediabunny/mp3-encoder@1.61.3/dist/bundles/mediabunny-mp3-encoder.min.js'],
   };
   const MODULES = {
@@ -749,18 +762,20 @@ button, select, summary, .drop { touch-action: manipulation; }
     opts.mode = m; store.set(opts);
     document.querySelectorAll('.modes [role="tab"]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.mode === m)));
     document.querySelectorAll('[data-for]').forEach(s => { s.hidden = s.dataset.for !== m; });
-    $('go-label').textContent = m === 'convert' ? 'Конвертировать' : m === 'compress' ? 'Сжать' : 'Обрезать';
+    $('go-label').textContent = m === 'convert' ? 'Конвертировать' : m === 'compress' ? 'Сжать' : m === 'trim' ? 'Обрезать' : 'Убрать фон';
     $('bulk-wrap').hidden = m !== 'convert';
-    $('drop-title').textContent = m === 'trim' ? (COARSE ? 'Выберите аудио' : 'Перетащите аудио сюда') : COARSE ? 'Выберите файлы' : 'Перетащите файлы сюда';
-    $('drop-text').textContent = m === 'trim'
-      ? (COARSE ? 'Нажмите и выберите песню, запись или голосовое сообщение.' : 'или нажмите, чтобы выбрать. MP3, WAV, OGG, M4A и другие.')
+    $('drop-title').textContent = m === 'bg' ? (COARSE ? 'Выберите фото' : 'Перетащите фото сюда') : m === 'trim' ? (COARSE ? 'Выберите аудио или видео' : 'Перетащите аудио или видео сюда') : COARSE ? 'Выберите файлы' : 'Перетащите файлы сюда';
+    $('drop-text').textContent = m === 'bg'
+      ? (COARSE ? 'Нажмите и выберите фото человека, предмета или животного. Результат будет PNG с прозрачным фоном.' : 'или нажмите, чтобы выбрать. Результат будет PNG с прозрачным фоном.')
+      : m === 'trim'
+      ? (COARSE ? 'Нажмите и выберите песню, запись, голосовое сообщение или ролик.' : 'или нажмите, чтобы выбрать. MP3, WAV, M4A, MP4, MOV, WEBM и другие.')
       : COARSE
       ? (m === 'convert' ? 'Нажмите, чтобы выбрать фото, видео или документы. Можно сразу несколько.' : 'Нажмите и выберите фото, видео или аудио. Покажем, на сколько уменьшился каждый файл.')
       : (m === 'convert'
         ? 'или нажмите, чтобы выбрать. Можно сразу много, можно вставить картинку через Ctrl+V.'
         : 'Фото, видео или аудио. Покажем, на сколько уменьшился каждый файл.');
     items.forEach(it => { if (it.status === 'done' || it.status === 'error' || it.status === 'skip') { it.status = 'ready'; it.note = ''; } });
-    if (m === 'trim') items.forEach(it => { if (it.kind === 'audio') { ownTarget(it); it.edit = true; loadWave(it); } });
+    if (m === 'trim') items.forEach(it => { if (it.kind === 'audio' || it.kind === 'video') { ownTarget(it); it.edit = true; loadWave(it); } });
     renderQueue();
   }
   document.querySelector('.modes').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (b && !busy) setMode(b.dataset.mode); });
@@ -780,7 +795,7 @@ button, select, summary, .drop { touch-action: manipulation; }
       if (kind === 'video') videoThumb(item);
       if (kind === 'audio') probeAudioDur(item);
       if (kind === 'pdf') probePdf(item);
-      if (opts.mode === 'trim' && kind === 'audio') { ownTarget(item); item.edit = true; loadWave(item); }
+      if (opts.mode === 'trim' && (kind === 'audio' || kind === 'video')) { ownTarget(item); item.edit = true; loadWave(item); }
       if (COARSE && kind === 'video' && file.size > 300 * 1024 * 1024) toast('Большое видео: на телефоне может не хватить памяти. Для таких файлов лучше компьютер.');
       items.push(item);
     }
@@ -836,10 +851,10 @@ button, select, summary, .drop { touch-action: manipulation; }
 
   function renderQueue() {
     const q = $('queue');
-    const compress = opts.mode === 'compress', trimMode = opts.mode === 'trim';
+    const compress = opts.mode === 'compress', trimMode = opts.mode === 'trim', bgMode = opts.mode === 'bg';
     $('q-count').textContent = items.length ? files(items.length) : '';
     if (!items.length) {
-      q.innerHTML = `<li class="empty">${trimMode ? 'Добавьте аудио, которое нужно обрезать.' : compress ? 'Добавьте фото, видео или аудио, которые нужно сделать легче.' : 'Добавьте файлы, и они появятся здесь.'}</li>`;
+      q.innerHTML = `<li class="empty">${bgMode ? 'Добавьте фото, у которых нужно убрать фон.' : trimMode ? 'Добавьте аудио или видео, которое нужно обрезать.' : compress ? 'Добавьте фото, видео или аудио, которые нужно сделать легче.' : 'Добавьте файлы, и они появятся здесь.'}</li>`;
     } else {
       q.innerHTML = items.map(it => {
         const fam = FAMILY[it.kind] || 'other';
@@ -850,7 +865,9 @@ button, select, summary, .drop { touch-action: manipulation; }
         const trimBtn = (!trimMode && (it.kind === 'audio' || it.kind === 'video'))
           ? `<button class="icon-btn${it.edit ? ' active' : ''}" type="button" data-trim="${it.id}" title="Обрезать" aria-label="Обрезать ${esc(it.file.name)}" aria-pressed="${!!it.edit}"${busy ? ' disabled' : ''}>${SCISSORS}</button>` : '';
         if (!it.kind) status = '<span class="status-err">Этот формат пока не поддерживается</span>';
-        else if (trimMode && it.kind !== 'audio') status = '<span class="status-warn">В этой вкладке только аудио</span>';
+        else if (trimMode && it.kind !== 'audio' && it.kind !== 'video') status = '<span class="status-warn">В этой вкладке только аудио и видео</span>';
+        else if (bgMode && !bgOk(it)) status = '<span class="status-warn">В этой вкладке только фото</span>';
+        else if (bgMode) right = `<div class="to"><span class="squeeze">убрать фон, сохранить в</span>${chip('png', 'image')}</div>`;
         else if (compress) {
           const plan = compressPlan(it);
           if (plan.no) status = `<span class="status-warn">${esc(plan.no)}</span>`;
@@ -871,7 +888,7 @@ button, select, summary, .drop { touch-action: manipulation; }
     }
     const union = [...new Set(items.flatMap(it => it.kind ? targetsFor(it.ext, it.kind) : []))].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
     $('bulk').innerHTML = '<option value="">—</option>' + union.map(t => `<option value="${t}">${LABEL[t]}</option>`).join('');
-    const workable = trimMode ? items.some(it => it.kind === 'audio') : compress ? items.some(it => !compressPlan(it).no) : items.some(it => it.kind);
+    const workable = bgMode ? items.some(bgOk) : trimMode ? items.some(it => it.kind === 'audio' || it.kind === 'video') : compress ? items.some(it => !compressPlan(it).no) : items.some(it => it.kind);
     $('go').disabled = !workable || busy;
     $('go').hidden = busy; $('stop').hidden = !busy;
     $('clear').disabled = busy;
@@ -947,7 +964,20 @@ button, select, summary, .drop { touch-action: manipulation; }
         'DOCX в HTML или Markdown удобно, чтобы вставить текст на сайт.',
       ] },
     },
+    bg: {
+      image: { title: 'Фото и картинки', items: [
+        'Лучше всего работают фото, где главный предмет чётко виден: человек, животное, вещь на столе.',
+        'Результат сохраняется в PNG: только он умеет хранить прозрачность. JPG прозрачность теряет.',
+        'Мелкие детали вроде волос и шерсти могут получиться неидеально. Это ограничение лёгкой модели, которая работает прямо в браузере.',
+        'Чтобы залить фон цветом, откройте PNG в любом редакторе или переведите его в JPG на вкладке «Конвертировать»: фон возьмётся из настроек.',
+      ] },
+    },
     trim: {
+      video: { title: 'Видео', items: [
+        'Видео пережимается заново, поэтому обрезка занимает время, зависящее от длины ролика.',
+        'Оставьте тот же формат, если нужен тот же ролик, только короче. MP4 откроется везде.',
+        'Прослушать можно только звук. Нужный момент проще найти по звуку и времени.',
+      ] },
       audio: { title: 'Аудио', items: [
         'Двигайте левый и правый край на волне: сохранится только светлая часть.',
         'Кнопка «Прослушать» играет выбранный участок, так легко поймать нужную секунду.',
@@ -1931,6 +1961,74 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     throw new Error('Неизвестный формат');
   }
 
+  // ---------- Background removal ----------
+  const bgOk = it => it.kind === 'image' && it.ext !== 'svg';
+  let bgSession = null;
+  function bgModel() {
+    if (!bgSession) {
+      bgSession = (async () => {
+        await need('ort');
+        const ort = window.ort;
+        ort.env.wasm.wasmPaths = CDN + 'onnxruntime-web@1.20.1/dist/';
+        ort.env.wasm.numThreads = 1; // threads need a cross-origin isolated page, which static hosting can't give
+        const res = await fetch('models/u2netp.onnx');
+        if (!res.ok) throw new Error('Не удалось загрузить модель удаления фона. Проверьте интернет и попробуйте ещё раз.');
+        return ort.InferenceSession.create(await res.arrayBuffer(), { executionProviders: ['wasm'] });
+      })().catch(e => { bgSession = null; throw e; });
+    }
+    return bgSession;
+  }
+  async function removeBackground(item) {
+    const d = await decodeImage(item.file, item.ext);
+    try {
+      const c = drawImage(d, false, 2048);
+      const W = c.width, H = c.height, S = 320;
+      // The network sees a 320x320 copy, normalised the way U2-Net was trained
+      const sc = document.createElement('canvas'); sc.width = sc.height = S;
+      const sg = sc.getContext('2d'); sg.imageSmoothingQuality = 'high'; sg.drawImage(c, 0, 0, S, S);
+      const px = sg.getImageData(0, 0, S, S).data;
+      let max = 1;
+      for (let i = 0; i < px.length; i += 4) max = Math.max(max, px[i], px[i + 1], px[i + 2]);
+      const mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225], N = S * S;
+      const input = new Float32Array(3 * N);
+      for (let i = 0; i < N; i++) for (let k = 0; k < 3; k++) input[k * N + i] = (px[i * 4 + k] / max - mean[k]) / std[k];
+      const sess = await bgModel();
+      const ort = window.ort;
+      const out = await sess.run({ [sess.inputNames[0]]: new ort.Tensor('float32', input, [1, 3, S, S]) });
+      const m = out[sess.outputNames[0]].data;
+      let lo = Infinity, hi = -Infinity;
+      for (let i = 0; i < N; i++) { if (m[i] < lo) lo = m[i]; if (m[i] > hi) hi = m[i]; }
+      const mc = document.createElement('canvas'); mc.width = mc.height = S;
+      const mg = mc.getContext('2d'), md = mg.createImageData(S, S);
+      for (let i = 0; i < N; i++) { const v = Math.round((m[i] - lo) / (hi - lo || 1) * 255); md.data[i * 4] = md.data[i * 4 + 1] = md.data[i * 4 + 2] = v; md.data[i * 4 + 3] = 255; }
+      mg.putImageData(md, 0, 0);
+      // Stretch the mask to the photo's size and use it as the alpha channel
+      const big = document.createElement('canvas'); big.width = W; big.height = H;
+      const bg = big.getContext('2d'); bg.imageSmoothingQuality = 'high'; bg.drawImage(mc, 0, 0, W, H);
+      const mask = bg.getImageData(0, 0, W, H).data;
+      const ctx = c.getContext('2d'), img = ctx.getImageData(0, 0, W, H);
+      for (let i = 0; i < W * H; i++) {
+        const t = Math.min(1, Math.max(0, (mask[i * 4] / 255 - 0.2) / 0.6));
+        img.data[i * 4 + 3] = Math.round(img.data[i * 4 + 3] * t * t * (3 - 2 * t));
+      }
+      ctx.putImageData(img, 0, 0);
+      return { name: `${baseOf(item.file.name)}-без-фона.png`, blob: await encodeCanvas(c, 'png') };
+    } finally { d.done(); }
+  }
+  async function runBg(todo) {
+    for (const it of todo) {
+      if (stopRequested) { it.status = 'error'; it.note = 'Остановлено'; continue; }
+      it.status = 'working'; it.note = bgSession ? '' : 'загружаю модель'; renderQueue();
+      await tick();
+      try {
+        addResult(await removeBackground(it), undefined, true);
+        renderResults();
+        it.status = 'done'; it.note = '';
+      } catch (e) { console.error(e); it.status = 'error'; it.note = friendly(e); }
+      renderQueue();
+    }
+  }
+
   // ---------- Compression ----------
   // A rough size forecast shown next to the button (photos by typical ratios, audio and video by bitrate)
   const EST_IMG = { light: 0.5, medium: 0.3, strong: 0.15 };
@@ -2065,6 +2163,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     if (/password/i.test(m)) return 'Файл защищён паролем.';
     if (/JSON/i.test(m) && /position|token|Unexpected/i.test(m)) return 'В JSON ошибка, его не удалось прочитать.';
     if (/memory|allocation/i.test(m)) return 'Не хватило памяти. Попробуйте файл поменьше или закройте другие вкладки.';
+    if (/модел/.test(m)) return m;
     if (/^[A-Za-z]/.test(m)) return 'Не получилось: файл повреждён или в необычном формате.';
     return m;
   }
@@ -2147,7 +2246,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   }
 
   $('go').addEventListener('click', async () => {
-    const todo = items.filter(it => opts.mode === 'trim' ? it.kind === 'audio' : it.kind);
+    const todo = items.filter(it => opts.mode === 'trim' ? (it.kind === 'audio' || it.kind === 'video') : opts.mode === 'bg' ? bgOk(it) : it.kind);
     if (!todo.length || busy) return;
     busy = true; stopRequested = false; $('stop').disabled = false;
     holdScreen(true);
@@ -2155,7 +2254,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     todo.forEach(it => { it.status = 'ready'; it.note = ''; });
     renderQueue();
     try {
-      if (opts.mode === 'compress') await runCompress(todo); else if (opts.mode === 'trim') await runTrim(todo); else await runConvert(todo);
+      if (opts.mode === 'compress') await runCompress(todo); else if (opts.mode === 'trim') await runTrim(todo); else if (opts.mode === 'bg') await runBg(todo); else await runConvert(todo);
     } finally {
       busy = false; holdScreen(false); renderQueue();
     }
@@ -2194,6 +2293,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
         <div class="thumb">${r.url ? `<img src="${r.url}" alt="">` : chip(ext, OUT_FAMILY[ext] || 'other')}</div>
         <div class="meta"><span class="name" title="${esc(r.name)}">${esc(r.name)}</span><span class="sub">${chip(ext, OUT_FAMILY[ext] || 'other')}<span class="num">${r.from ? fmtSize(r.from) + ' → ' : ''}${fmtSize(r.blob.size)}</span>${saved > 0 ? `<span class="save-pill">−${saved}%</span>` : ''}${zipped}</span></div>
         <button class="btn" type="button" data-save="${r.id}"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8m0 0-3-3m3 3 3-3M3 12v1.5h10V12"/></svg>Скачать</button>
+        <button class="icon-btn" type="button" data-drop="${r.id}" title="Убрать из списка" aria-label="Убрать ${esc(r.name)} из списка"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
       </li>`;
     }).join('');
   }
@@ -2240,6 +2340,13 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     b.disabled = true;
     try { await saveFile(r.name, r.blob); } finally { b.disabled = false; }
   });
+  $('results').addEventListener('click', e => {
+    const b = e.target.closest('[data-drop]'); if (!b) return;
+    const r = results.find(x => x.id === +b.dataset.drop); if (!r) return;
+    if (r.url) URL.revokeObjectURL(r.url);
+    results = results.filter(x => x !== r);
+    prepZip();
+  });
   $('zip').addEventListener('click', async () => {
     const b = $('zip'); b.disabled = true;
     try {
@@ -2255,7 +2362,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   $('matrix').innerHTML = MATRIX.map(([label, ins, outs]) =>
     `<tr><td>${label}</td><td><div class="chips">${ins.map(e => chip(e, FAMILY[KIND[e]] || 'other')).join('')}</div></td><td><div class="chips">${outs.map(e => chip(e, OUT_FAMILY[e] || 'other')).join('')}</div></td></tr>`).join('');
 
-  setMode(['compress', 'trim'].includes(opts.mode) ? opts.mode : 'convert');
+  setMode(['compress', 'trim', 'bg'].includes(opts.mode) ? opts.mode : 'convert');
 })();
 </script>
 </body>
