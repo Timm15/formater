@@ -197,6 +197,8 @@ input[type="color"] { width: 36px; height: 28px; border: 1px solid var(--line); 
 .seg button + button { border-left: 1px solid var(--line); }
 .seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
 .seg.words button { font-family: var(--body); font-size: 13px; }
+.seg.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); }
+.seg.grid2 button + button { border-left: 0; }
 
 /* Matrix */
 .matrix-wrap { overflow-x: auto; }
@@ -255,10 +257,22 @@ details.tip ul { margin: 0 0 8px; padding-left: 18px; color: var(--muted); font-
 .lang button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .estimate { font-size: 13px; color: var(--muted); min-width: 0; flex: 1 1 180px; }
 @media (max-width: 560px) {
-  .modes { display: flex; }
-  .modes button { flex: 1; justify-content: center; padding: 9px 6px; gap: 5px; font-size: 14px; }
+  .modes { display: flex; flex-wrap: wrap; width: 100%; }
+  .modes button { flex: 1 1 auto; justify-content: center; padding: 8px 10px; gap: 5px; font-size: 14px; line-height: 1.2; text-align: center; }
   .modes button svg { display: none; }
+  .row > [data-remove] { grid-column: 3; grid-row: 1; }
+  .row > span:empty { display: none; }
+  .res { grid-template-columns: 40px minmax(0, 1fr) auto auto; gap: 8px; }
+  .res [data-save] .lbl { display: none; }
+  .res [data-save] { padding-inline: 12px; }
 }
+header.top { position: relative; }
+header.top .lang { position: absolute; top: 2px; right: 0; }
+@media (max-width: 420px) {
+  .lang button { padding: 4px 7px; font-size: 12px; }
+  .brand h1 { font-size: 26px; }
+}
+.pdf-move { display: flex; gap: 2px; }
 button, select, summary, .drop { touch-action: manipulation; }
 
 /* Touch screens: bigger targets, and 16px fields so iOS doesn't zoom in on focus */
@@ -319,6 +333,10 @@ button, select, summary, .drop { touch-action: manipulation; }
     <button type="button" role="tab" id="tab-bg" data-mode="bg" aria-selected="false">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="5.5" r="2.5"/><path d="M3 14c0-3 2.2-4.5 5-4.5s5 1.5 5 4.5"/><path d="M1.5 4V2.5H3M13 2.5h1.5V4M1.5 12v1.5H3M13 13.5h1.5V12" stroke-width="1.2"/></svg>
       Убрать фон
+    </button>
+    <button type="button" role="tab" id="tab-pdf" data-mode="pdf" aria-selected="false">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 1.5h5.5L13 5v9.5H4z"/><path d="M9.5 1.5V5H13M6.5 9h4M6.5 11.5h4"/></svg>
+      PDF
     </button>
   </div>
 
@@ -515,6 +533,34 @@ button, select, summary, .drop { touch-action: manipulation; }
           <p class="hint" id="audio-hint"></p>
         </div>
       </div>
+      <!-- PDF tools -->
+      <div data-for="pdf" hidden>
+        <div class="set">
+          <h3>Работа с PDF</h3>
+          <div class="field">
+            <span id="ptool-label">Что сделать</span>
+            <div class="seg words grid2" role="group" aria-labelledby="ptool-label" id="ptool">
+              <button type="button" data-v="merge" aria-pressed="true">Объединить</button>
+              <button type="button" data-v="split" aria-pressed="false">Разделить</button>
+              <button type="button" data-v="extract" aria-pressed="false">Выбрать страницы</button>
+              <button type="button" data-v="rotate" aria-pressed="false">Повернуть</button>
+            </div>
+          </div>
+          <div class="field" id="pt-pages-field">
+            <label for="pt-pages">Страницы</label>
+            <input type="text" id="pt-pages" placeholder="например 1-3, 7, 10-" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="field" id="prot-field">
+            <span id="prot-label">Поворот по часовой стрелке</span>
+            <div class="seg" role="group" aria-labelledby="prot-label" id="prot">
+              <button type="button" data-v="90" aria-pressed="true">90°</button>
+              <button type="button" data-v="180" aria-pressed="false">180°</button>
+              <button type="button" data-v="270" aria-pressed="false">270°</button>
+            </div>
+          </div>
+          <p class="hint" id="pt-hint"></p>
+        </div>
+      </div>
       <!-- Background removal -->
       <div data-for="bg" hidden>
         <div class="set">
@@ -522,7 +568,7 @@ button, select, summary, .drop { touch-action: manipulation; }
           <p class="hint">Нейросеть находит главный предмет на фото и делает всё остальное прозрачным. Всё считается в вашем браузере, фото никуда не отправляется.</p>
           <div class="field">
             <span id="bgq-label">Модель</span>
-            <div class="seg words" role="group" aria-labelledby="bgq-label" id="bgq">
+            <div class="seg words grid2" role="group" aria-labelledby="bgq-label" id="bgq">
               <button type="button" data-v="none" aria-pressed="false">Без нейросети</button>
               <button type="button" data-v="fast" aria-pressed="false">Быстро</button>
               <button type="button" data-v="hq" aria-pressed="true">Точнее</button>
@@ -589,6 +635,7 @@ button, select, summary, .drop { touch-action: manipulation; }
     utif: ['utif2@4.1.0/UTIF.js'],
     upng: ['upng-js@2.1.0/UPNG.js'],
     ort: ['onnxruntime-web@1.20.1/dist/ort.min.js'],
+    pdflib: ['pdf-lib@1.17.1/dist/pdf-lib.min.js'],
     mp3enc: ['@mediabunny/mp3-encoder@1.61.3/dist/bundles/mediabunny-mp3-encoder.min.js'],
   };
   const MODULES = {
@@ -644,6 +691,7 @@ button, select, summary, .drop { touch-action: manipulation; }
     ['Веб-страницы', ['html'], ['docx', 'md', 'pdf', 'txt']],
     ['Текст', ['txt'], ['docx', 'pdf', 'html']],
     ['Обрезка', ['mp3', 'wav', 'm4a', 'ogg', 'mp4', 'mov', 'webm', 'mkv'], ['mp3', 'wav', 'm4a', 'ogg', 'mp4', 'webm', 'mov', 'mkv']],
+    ['Работа с PDF', ['pdf', 'jpg', 'png', 'webp', 'heic'], ['pdf']],
     ['Сжатие', ['jpg', 'png', 'webp', 'heic', 'mp4', 'mov', 'webm', 'mp3', 'wav'], ['jpg', 'png', 'webp', 'mp4', 'webm', 'mp3']],
   ];
   function extOf(name) { const m = /\.([a-z0-9]+)$/i.exec(name); return m ? m[1].toLowerCase() : ''; }
@@ -726,7 +774,7 @@ button, select, summary, .drop { touch-action: manipulation; }
   let pixelNote = false;
 
   // ---------- Settings ----------
-  const opts = { mode: 'convert', quality: 0.9, maxSide: 0, bg: '#ffffff', page: 'fit', merge: true, dpi: 150, sep: ';', gifw: 480, giff: 12, level: 'medium', cfmt: 'same', targetKb: 0, cmax: 0, vres: 'auto', mute: false, pdfPages: '', pdfJoin: false, pack: 'auto', bgq: 'hq' };
+  const opts = { mode: 'convert', quality: 0.9, maxSide: 0, bg: '#ffffff', page: 'fit', merge: true, dpi: 150, sep: ';', gifw: 480, giff: 12, level: 'medium', cfmt: 'same', targetKb: 0, cmax: 0, vres: 'auto', mute: false, pdfPages: '', pdfJoin: false, pack: 'auto', bgq: 'hq', ptool: 'merge', prot: 90, ptPages: '' };
   const store = {
     get() { try { return JSON.parse(localStorage.getItem('formater-opts') || 'null'); } catch { return null; } },
     set(v) { try { localStorage.setItem('formater-opts', JSON.stringify(v)); } catch {} },
@@ -755,6 +803,22 @@ button, select, summary, .drop { touch-action: manipulation; }
   bindSeg('cfmt', 'cfmt', String, () => renderQueue());
   bindSeg('vres', 'vres', String);
   bindSeg('pack', 'pack', String);
+  bindSeg('ptool', 'ptool', String, () => { ptoolUi(); setGoLabel(); renderQueue(); });
+  bindSeg('prot', 'prot', Number);
+  $('pt-pages').value = opts.ptPages;
+  $('pt-pages').addEventListener('input', e => { opts.ptPages = e.target.value; store.set(opts); });
+  const PT_HINT = {
+    merge: 'Все PDF и картинки из очереди склеятся в один PDF в том порядке, в каком стоят в списке. Порядок меняйте стрелками у файлов.',
+    split: 'Каждая страница станет отдельным PDF. Если страниц больше 10, они упакуются в один ZIP. Можно указать только нужные страницы.',
+    extract: 'Из каждого PDF сохранятся только указанные страницы, в одном новом файле. Так же можно и удалить лишние: впишите всё, кроме них.',
+    rotate: 'Повернутся все страницы или только указанные. Удобно для сканов, которые легли боком.',
+  };
+  function ptoolUi() {
+    $('pt-hint').textContent = PT_HINT[opts.ptool] || '';
+    $('prot-field').hidden = opts.ptool !== 'rotate';
+    $('pt-pages-field').hidden = opts.ptool === 'merge';
+  }
+  ptoolUi();
   bindSeg('bgq', 'bgq', String, () => { for (const k in bgBad) delete bgBad[k]; });
   $('pdf-pages').addEventListener('input', e => { opts.pdfPages = e.target.value; });
   $('pdf-join').checked = opts.pdfJoin;
@@ -782,14 +846,21 @@ button, select, summary, .drop { touch-action: manipulation; }
   levelHints();
 
   // ---------- Mode ----------
+  const PT_GO = { merge: 'Объединить', split: 'Разделить', extract: 'Выбрать страницы', rotate: 'Повернуть' };
+  function setGoLabel() {
+    const m = opts.mode;
+    $('go-label').textContent = m === 'convert' ? 'Конвертировать' : m === 'compress' ? 'Сжать' : m === 'trim' ? 'Обрезать' : m === 'bg' ? 'Убрать фон' : PT_GO[opts.ptool] || 'Объединить';
+  }
   function setMode(m) {
     opts.mode = m; store.set(opts);
     document.querySelectorAll('.modes [role="tab"]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.mode === m)));
     document.querySelectorAll('[data-for]').forEach(s => { s.hidden = s.dataset.for !== m; });
-    $('go-label').textContent = m === 'convert' ? 'Конвертировать' : m === 'compress' ? 'Сжать' : m === 'trim' ? 'Обрезать' : 'Убрать фон';
+    setGoLabel();
     $('bulk-wrap').hidden = m !== 'convert';
-    $('drop-title').textContent = m === 'bg' ? (COARSE ? 'Выберите фото' : 'Перетащите фото сюда') : m === 'trim' ? (COARSE ? 'Выберите аудио или видео' : 'Перетащите аудио или видео сюда') : COARSE ? 'Выберите файлы' : 'Перетащите файлы сюда';
-    $('drop-text').textContent = m === 'bg'
+    $('drop-title').textContent = m === 'pdf' ? (COARSE ? 'Выберите PDF или картинки' : 'Перетащите PDF или картинки сюда') : m === 'bg' ? (COARSE ? 'Выберите фото' : 'Перетащите фото сюда') : m === 'trim' ? (COARSE ? 'Выберите аудио или видео' : 'Перетащите аудио или видео сюда') : COARSE ? 'Выберите файлы' : 'Перетащите файлы сюда';
+    $('drop-text').textContent = m === 'pdf'
+      ? (COARSE ? 'Нажмите и выберите PDF. Картинки тоже можно: при объединении они станут страницами.' : 'или нажмите, чтобы выбрать. Картинки тоже можно: при объединении они станут страницами.')
+      : m === 'bg'
       ? (COARSE ? 'Нажмите и выберите фото человека, предмета или животного. Результат будет PNG с прозрачным фоном.' : 'или нажмите, чтобы выбрать. Результат будет PNG с прозрачным фоном.')
       : m === 'trim'
       ? (COARSE ? 'Нажмите и выберите песню, запись, голосовое сообщение или ролик.' : 'или нажмите, чтобы выбрать. MP3, WAV, M4A, MP4, MOV, WEBM и другие.')
@@ -875,10 +946,10 @@ button, select, summary, .drop { touch-action: manipulation; }
 
   function renderQueue() {
     const q = $('queue');
-    const compress = opts.mode === 'compress', trimMode = opts.mode === 'trim', bgMode = opts.mode === 'bg';
+    const compress = opts.mode === 'compress', trimMode = opts.mode === 'trim', bgMode = opts.mode === 'bg', pdfMode = opts.mode === 'pdf';
     $('q-count').textContent = items.length ? files(items.length) : '';
     if (!items.length) {
-      q.innerHTML = `<li class="empty">${bgMode ? 'Добавьте фото, у которых нужно убрать фон.' : trimMode ? 'Добавьте аудио или видео, которое нужно обрезать.' : compress ? 'Добавьте фото, видео или аудио, которые нужно сделать легче.' : 'Добавьте файлы, и они появятся здесь.'}</li>`;
+      q.innerHTML = `<li class="empty">${pdfMode ? 'Добавьте PDF, с которыми нужно что-то сделать.' : bgMode ? 'Добавьте фото, у которых нужно убрать фон.' : trimMode ? 'Добавьте аудио или видео, которое нужно обрезать.' : compress ? 'Добавьте фото, видео или аудио, которые нужно сделать легче.' : 'Добавьте файлы, и они появятся здесь.'}</li>`;
     } else {
       q.innerHTML = items.map(it => {
         const fam = FAMILY[it.kind] || 'other';
@@ -892,6 +963,12 @@ button, select, summary, .drop { touch-action: manipulation; }
         else if (trimMode && it.kind !== 'audio' && it.kind !== 'video') status = '<span class="status-warn">В этой вкладке только аудио и видео</span>';
         else if (bgMode && !bgOk(it)) status = '<span class="status-warn">В этой вкладке только фото</span>';
         else if (bgMode) right = `<div class="to"><span class="squeeze">убрать фон, сохранить в</span>${chip('png', 'image')}</div>`;
+        else if (pdfMode && !pdfOk(it)) status = `<span class="status-warn">${it.kind === 'image' ? 'Картинки можно только объединять' : 'В этой вкладке только PDF и картинки'}</span>`;
+        else if (pdfMode) {
+          const i = items.indexOf(it);
+          const move = opts.ptool === 'merge' ? `<span class="pdf-move"><button class="icon-btn" type="button" data-up="${it.id}" aria-label="Выше" title="Выше"${i === 0 || busy ? ' disabled' : ''}>↑</button><button class="icon-btn" type="button" data-down="${it.id}" aria-label="Ниже" title="Ниже"${i === items.length - 1 || busy ? ' disabled' : ''}>↓</button></span>` : '';
+          right = `<div class="to">${move}<span class="arrow" aria-hidden="true">→</span>${chip('pdf', 'pdf')}</div>`;
+        }
         else if (compress) {
           const plan = compressPlan(it);
           if (plan.no) status = `<span class="status-warn">${esc(plan.no)}</span>`;
@@ -912,7 +989,7 @@ button, select, summary, .drop { touch-action: manipulation; }
     }
     const union = [...new Set(items.flatMap(it => it.kind ? targetsFor(it.ext, it.kind) : []))].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
     $('bulk').innerHTML = '<option value="">—</option>' + union.map(t => `<option value="${t}">${LABEL[t]}</option>`).join('');
-    const workable = bgMode ? items.some(bgOk) : trimMode ? items.some(it => it.kind === 'audio' || it.kind === 'video') : compress ? items.some(it => !compressPlan(it).no) : items.some(it => it.kind);
+    const workable = pdfMode ? items.some(pdfOk) : bgMode ? items.some(bgOk) : trimMode ? items.some(it => it.kind === 'audio' || it.kind === 'video') : compress ? items.some(it => !compressPlan(it).no) : items.some(it => it.kind);
     $('go').disabled = !workable || busy;
     $('go').hidden = busy; $('stop').hidden = !busy;
     $('clear').disabled = busy;
@@ -925,6 +1002,13 @@ button, select, summary, .drop { touch-action: manipulation; }
     const s = e.target.closest('select[data-id]'); if (!s) return;
     const it = items.find(i => i.id === +s.dataset.id);
     if (it) { it.target = s.value; it.touched = true; if (it.status !== 'ready' && it.status !== 'working') { it.status = 'ready'; it.note = ''; renderQueue(); } }
+  });
+  $('queue').addEventListener('click', e => {
+    const mv = e.target.closest('[data-up],[data-down]');
+    if (mv && !busy) {
+      const id = +(mv.dataset.up || mv.dataset.down), i = items.findIndex(x => x.id === id), j = mv.dataset.up ? i - 1 : i + 1;
+      if (i >= 0 && j >= 0 && j < items.length) { [items[i], items[j]] = [items[j], items[i]]; renderQueue(); }
+    }
   });
   $('queue').addEventListener('click', e => {
     const b = e.target.closest('[data-remove]'); if (!b || busy) return;
@@ -985,6 +1069,19 @@ button, select, summary, .drop { touch-action: manipulation; }
         'Word получается из Markdown, HTML и TXT: заголовки, списки, таблицы и ссылки сохраняются.',
         'В PDF страницы A4 сохраняются как картинки: вёрстка точная, но текст не выделяется.',
         'DOCX в HTML или Markdown удобно, чтобы вставить текст на сайт.',
+      ] },
+    },
+    pdf: {
+      pdf: { title: 'PDF', items: [
+        'Объединить: несколько PDF станут одним файлом. Порядок задаётся стрелками у файлов в очереди.',
+        'Разделить: каждая страница сохранится отдельным PDF, а много страниц сразу упакуются в ZIP.',
+        'Выбрать страницы: впишите, какие оставить, например 1-3, 7. Это же способ удалить лишние.',
+        'Повернуть: исправит сканы, которые легли боком. Можно повернуть только некоторые страницы.',
+        'Текст и качество страниц не меняются: страницы переносятся как есть, без пережатия.',
+      ] },
+      image: { title: 'Фото и картинки', items: [
+        'Картинки при объединении становятся страницами PDF, каждая своего размера.',
+        'Удобно собрать фото документов или чеков в один файл для отправки.',
       ] },
     },
     bg: {
@@ -1049,7 +1146,7 @@ button, select, summary, .drop { touch-action: manipulation; }
     const present = CAT_ORDER.filter(c => cats.has(c) && TIPS[opts.mode][c]);
     const rest = CAT_ORDER.filter(c => !cats.has(c) && TIPS[opts.mode][c]);
     let html = '';
-    if (!present.length) html += '<p class="hint">Добавьте файлы, и здесь появятся подсказки именно для них. А пока вот что умеет каждый тип.</p>';
+    if (!present.length && !items.length) html += '<p class="hint">Добавьте файлы, и здесь появятся подсказки именно для них. А пока вот что умеет каждый тип.</p>';
     html += present.map(c => tipHtml(c, tipState.has(c) ? tipState.get(c) : true)).join('');
     if (present.length && rest.length) html += '<p class="hint tips-more">Для других типов файлов</p>';
     html += rest.map(c => tipHtml(c, tipState.has(c) ? tipState.get(c) : false)).join('');
@@ -1268,7 +1365,7 @@ button, select, summary, .drop { touch-action: manipulation; }
   function updateRunNote() {
     let t = '';
     if (busy) t = 'Не закрывайте вкладку и не сворачивайте браузер, пока идёт обработка.';
-    else if (COARSE && items.some(i => i.kind === 'video')) t = 'Видео на телефоне обрабатывается медленнее и может не поместиться в память. Большие ролики лучше делать на компьютере.';
+    else if (COARSE && ['convert', 'compress', 'trim'].includes(opts.mode) && items.some(i => i.kind === 'video')) t = 'Видео на телефоне обрабатывается медленнее и может не поместиться в память. Большие ролики лучше делать на компьютере.';
     $('run-note').textContent = t; $('run-note').hidden = !t;
   }
   // The ZIP is built ahead of the tap: phones only allow a download that starts right from the tap
@@ -1995,6 +2092,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   // Input size and normalisation each network was trained with
   const BG_CFG = { fast: { S: 320, std: [0.229, 0.224, 0.225] }, hq: { S: 320, std: [0.229, 0.224, 0.225] }, max: { S: 1024, std: [1, 1, 1] } };
   const bgSessions = {};
+  const ORT_PROXY = (() => { try { return localStorage.getItem('formater-ortproxy') !== '0'; } catch { return true; } })();
   let bgNote = false;
   // What happened during background removal, step by step: shown in the settings so a failure can be reported
   const bgLog = [];
@@ -2063,6 +2161,8 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
         const ort = window.ort;
         if (!ort || !ort.InferenceSession) throw new Error('onnxruntime did not start');
         ort.env.wasm.wasmPaths = CDN + 'onnxruntime-web@1.20.1/dist/';
+        // The network runs in a worker so the page stays responsive and «Stop» works; if that fails once, the next visit runs it directly
+        ort.env.wasm.proxy = ORT_PROXY;
         ort.env.wasm.numThreads = 1; // threads need a cross-origin isolated page, which static hosting can't give
         const buf = await stage(`model-${key}`, () => fetchModel(BG_MODELS[key], onProgress));
         // Plain settings that keep memory use low, so that phones can run the model
@@ -2178,7 +2278,10 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       for (const key of keys) {
         if (bgBad.ort) break;
         try { alpha = await neuralMask(c, key, onProgress); break; }
-        catch (e) { console.error(e); if (e instanceof Stopped) throw e; bgBad[key] = true; if (e && e.stage === 'onnxruntime-lib') bgBad.ort = true; }
+        catch (e) {
+          console.error(e); if (e instanceof Stopped) throw e; bgBad[key] = true; if (e && e.stage === 'onnxruntime-lib') bgBad.ort = true;
+          if (ORT_PROXY && e && /^(session|run)-/.test(e.stage || '')) { try { localStorage.setItem('formater-ortproxy', '0'); } catch {} logLine('worker mode failed: after reloading the page the network will run without it'); }
+        }
       }
       if (!alpha) {
         simple = true;
@@ -2228,6 +2331,89 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
         const m = (e && e.message) || String(e);
         it.note = /[А-Яа-я]/.test(m) ? friendly(e) : 'Не удалось убрать фон: ' + m.slice(0, 80);
       }
+      renderQueue();
+    }
+  }
+
+  // ---------- PDF tools: merge, split, pick pages, rotate (pages are copied as they are, nothing is re-rendered) ----------
+  const pdfOk = it => it.kind === 'pdf' || (opts.ptool === 'merge' && it.kind === 'image' && it.ext !== 'svg');
+  async function loadPdfLib(file) {
+    await need('pdflib');
+    return window.PDFLib.PDFDocument.load(await file.arrayBuffer());
+  }
+  const pdfBlob = async doc => new Blob([await doc.save()], { type: 'application/pdf' });
+  async function imagePage(out, it) {
+    const L = window.PDFLib;
+    let img;
+    if (it.ext === 'jpg' || it.ext === 'jpeg') img = await out.embedJpg(await it.file.arrayBuffer());
+    else if (it.ext === 'png') img = await out.embedPng(await it.file.arrayBuffer());
+    else {
+      const d = await decodeImage(it.file, it.ext);
+      try { img = await out.embedPng(await (await encodeCanvas(drawImage(d, false, 4000), 'png')).arrayBuffer()); } finally { d.done(); }
+    }
+    // 96 px per inch, so the photo keeps its natural size on the page
+    const w = img.width * 0.75, h = img.height * 0.75;
+    out.addPage([w, h]).drawImage(img, { x: 0, y: 0, width: w, height: h });
+    void L;
+  }
+  async function runPdfTools(todo) {
+    const L = await need('pdflib').then(() => window.PDFLib);
+    if (opts.ptool === 'merge') {
+      const out = await L.PDFDocument.create();
+      let pages = 0;
+      for (const it of todo) {
+        if (stopRequested) break;
+        it.status = 'working'; it.note = ''; renderQueue(); await tick();
+        try {
+          if (it.kind === 'pdf') {
+            const src = await raceStop(loadPdfLib(it.file));
+            (await out.copyPages(src, src.getPageIndices())).forEach(p => out.addPage(p));
+          } else await raceStop(imagePage(out, it));
+          it.status = 'done'; it.note = '';
+        } catch (e) { console.error(e); it.status = 'error'; it.note = friendly(e); }
+        renderQueue();
+      }
+      pages = out.getPageCount();
+      if (pages && !stopRequested) {
+        addResult({ name: `${WORD('объединено')}-${todo.filter(i => i.status === 'done').length}.pdf`, blob: await pdfBlob(out) });
+        todo.forEach(it => { if (it.status === 'done') it.note = 'в общем PDF'; });
+      }
+      return;
+    }
+    for (const it of todo) {
+      if (stopRequested) { it.status = 'error'; it.note = 'Остановлено'; continue; }
+      it.status = 'working'; it.note = ''; renderQueue(); await tick();
+      try {
+        const src = await raceStop(loadPdfLib(it.file));
+        const n = src.getPageCount(), base = baseOf(it.file.name);
+        const picked = (opts.ptool === 'rotate' && !opts.ptPages.trim()) ? null : parsePages(opts.ptPages, n);
+        if (opts.ptool === 'rotate') {
+          const set = picked ? new Set(picked) : null;
+          src.getPages().forEach((p, i) => { if (!set || set.has(i + 1)) p.setRotation(L.degrees((p.getRotation().angle + opts.prot) % 360)); });
+          addResult({ name: `${base}${WORD('-повёрнут')}.pdf`, blob: await pdfBlob(src) }, undefined, true);
+          it.note = '';
+        } else if (opts.ptool === 'extract') {
+          const out = await L.PDFDocument.create();
+          (await out.copyPages(src, picked.map(p => p - 1))).forEach(p => out.addPage(p));
+          addResult({ name: `${base}${WORD('-страницы')}.pdf`, blob: await pdfBlob(out) }, undefined, true);
+          it.note = `${picked.length} стр.`;
+        } else {
+          const outs = [], pad = String(n).length;
+          for (const [k, p] of picked.entries()) {
+            if (stopRequested) throw new Stopped();
+            setNote(it, `страница ${k + 1} из ${picked.length}`);
+            const one = await L.PDFDocument.create();
+            one.addPage((await one.copyPages(src, [p - 1]))[0]);
+            outs.push({ name: `${base}${WORD('-стр')}${String(p).padStart(pad, '0')}.pdf`, blob: await pdfBlob(one) });
+            if (k % 5 === 4) await tick();
+          }
+          const packed = await raceStop(maybePack(it, outs));
+          packed.forEach(o => addResult(o, undefined, true));
+          it.note = packed.length === 1 && outs.length > 1 ? `${files(outs.length)} в одном ZIP` : files(outs.length);
+        }
+        renderResults();
+        it.status = 'done';
+      } catch (e) { console.error(e); it.status = 'error'; it.note = friendly(e); }
       renderQueue();
     }
   }
@@ -2363,7 +2549,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   function friendly(e) {
     if (e instanceof Stopped) return 'Остановлено';
     const m = (e && e.message) || String(e);
-    if (/password/i.test(m)) return 'Файл защищён паролем.';
+    if (/password|encrypt/i.test(m)) return 'Файл защищён паролем.';
     if (/JSON/i.test(m) && /position|token|Unexpected/i.test(m)) return 'В JSON ошибка, его не удалось прочитать.';
     if (/memory|allocation/i.test(m)) return 'Не хватило памяти. Попробуйте файл поменьше или закройте другие вкладки.';
     if (/модел/.test(m)) return m;
@@ -2459,7 +2645,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   }
 
   $('go').addEventListener('click', async () => {
-    const todo = items.filter(it => opts.mode === 'trim' ? (it.kind === 'audio' || it.kind === 'video') : opts.mode === 'bg' ? bgOk(it) : it.kind);
+    const todo = items.filter(it => opts.mode === 'pdf' ? pdfOk(it) : opts.mode === 'trim' ? (it.kind === 'audio' || it.kind === 'video') : opts.mode === 'bg' ? bgOk(it) : it.kind);
     if (!todo.length || busy) return;
     busy = true; stopRequested = false; $('stop').disabled = false;
     holdScreen(true);
@@ -2467,7 +2653,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     todo.forEach(it => { it.status = 'ready'; it.note = ''; });
     renderQueue();
     try {
-      if (opts.mode === 'compress') await runCompress(todo); else if (opts.mode === 'trim') await runTrim(todo); else if (opts.mode === 'bg') await runBg(todo); else await runConvert(todo);
+      if (opts.mode === 'compress') await runCompress(todo); else if (opts.mode === 'trim') await runTrim(todo); else if (opts.mode === 'bg') await runBg(todo); else if (opts.mode === 'pdf') await runPdfTools(todo); else await runConvert(todo);
     } finally {
       busy = false; holdScreen(false); renderQueue();
     }
@@ -2505,7 +2691,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       return `<li class="res">
         <div class="thumb">${r.url ? `<img src="${r.url}" alt="">` : chip(ext, OUT_FAMILY[ext] || 'other')}</div>
         <div class="meta"><span class="name" title="${esc(r.name)}">${esc(r.name)}</span><span class="sub">${chip(ext, OUT_FAMILY[ext] || 'other')}<span class="num">${r.from ? fmtSize(r.from) + ' → ' : ''}${fmtSize(r.blob.size)}</span>${saved > 0 ? `<span class="save-pill">−${saved}%</span>` : ''}${zipped}</span></div>
-        <button class="btn" type="button" data-save="${r.id}"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8m0 0-3-3m3 3 3-3M3 12v1.5h10V12"/></svg>Скачать</button>
+        <button class="btn" type="button" data-save="${r.id}" aria-label="Скачать ${esc(r.name)}"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8m0 0-3-3m3 3 3-3M3 12v1.5h10V12"/></svg><span class="lbl">Скачать</span></button>
         <button class="icon-btn" type="button" data-drop="${r.id}" title="Убрать из списка" aria-label="Убрать ${esc(r.name)} из списка"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
       </li>`;
     }).join('');
@@ -2575,7 +2761,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   $('matrix').innerHTML = MATRIX.map(([label, ins, outs]) =>
     `<tr><td>${label}</td><td><div class="chips">${ins.map(e => chip(e, FAMILY[KIND[e]] || 'other')).join('')}</div></td><td><div class="chips">${outs.map(e => chip(e, OUT_FAMILY[e] || 'other')).join('')}</div></td></tr>`).join('');
 
-  setMode(['compress', 'trim', 'bg'].includes(opts.mode) ? opts.mode : 'convert');
+  setMode(['compress', 'trim', 'bg', 'pdf'].includes(opts.mode) ? opts.mode : 'convert');
 })();
 </script>
 </body>
