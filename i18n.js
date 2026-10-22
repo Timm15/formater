@@ -3,6 +3,12 @@
 (function () {
   'use strict';
   const D = {
+"Без нейросети": ["No neural network", "不用神经网络"],
+"Проверить нейросеть": ["Check the neural network", "检查神经网络"],
+"Скопировать отчёт": ["Copy report", "复制报告"],
+"Если удаление фона не работает, нажмите «Проверить нейросеть» и пришлите скопированный отчёт.": ["If background removal doesn't work, press \"Check the neural network\" and send the copied report.", "如果背景去除无法使用，请点击“检查神经网络”，并发送复制的报告。"],
+"Отчёт скопирован": ["Report copied", "报告已复制"],
+"Выделите отчёт и скопируйте его вручную": ["Select the report and copy it manually", "请选中报告并手动复制"],
 "Нейросеть не запустилась на этом устройстве, поэтому использован простой способ. Он хорошо работает на однотонном фоне.": ["The neural network couldn't start on this device, so a simple method was used. It works well on plain backgrounds.", "此设备无法运行神经网络，因此使用了简单方法。它在纯色背景上效果较好。"],
 "простой способ": ["basic method", "简单方法"],
 "Не удалось открыть фото: файл повреждён или этот формат не поддерживается браузером.": ["Couldn't open the photo: the file is damaged or this format isn't supported by the browser.", "无法打开照片：文件已损坏，或浏览器不支持此格式。"],
@@ -378,10 +384,7 @@
 "More accurate",
 "更精确"
 ],
-"«Точнее» скачивает модель около 42 МБ один раз: она лучше справляется с руками, волосами и мелкими деталями. «Быстро» весит около 5 МБ, но чаще ошибается. Большие фото уменьшаются до 2048 px.": [
-"\"More accurate\" downloads a model of about 42 MB once: it copes better with hands, hair and fine details. \"Fast\" weighs about 5 MB but makes more mistakes. Large photos are reduced to 2048 px.",
-"“更精确”会下载一次约 42 MB 的模型：对手、头发和细节处理得更好。“快速”约 5 MB，但更容易出错。大照片会缩小到 2048 px。"
-],
+"«Точнее» скачивает модель около 42 МБ один раз: она лучше справляется с руками, волосами и мелкими деталями. «Быстро» весит около 5 МБ, но чаще ошибается. «Без нейросети» работает на любом устройстве, но хорошо вырезает только однотонный фон. Большие фото уменьшаются до 2048 px.": ["\"More accurate\" downloads a model of about 42 MB once: it copes better with hands, hair and fine details. \"Fast\" weighs about 5 MB but makes more mistakes. \"No neural network\" works on any device, but cuts out only a plain background well. Large photos are reduced to 2048 px.", "“更精确”会下载一次约 42 MB 的模型：对手、头发和细节处理得更好。“快速”约 5 MB，但更容易出错。“不用神经网络”在任何设备上都能用，但只能较好地去除纯色背景。大照片会缩小到 2048 px。"],
 "Обрезка аудио и видео": [
 "Trim audio and video",
 "剪辑音频和视频"
@@ -990,7 +993,7 @@
   // What each text node or attribute said in Russian, so a switch of language can start from the original
   const saved = new WeakMap();
   const ATTRS = ['title', 'aria-label', 'placeholder', 'alt'];
-  function skip(el) { return !el || el.closest('script,style,.name'); }
+  function skip(el) { return !el || el.closest('script,style,.name,.diag'); }
   function render(ru) {
     const m = /^(\s*)([\s\S]*?)(\s*)$/.exec(ru);
     return m[1] + tr(m[2].replace(/\s+/g, ' '), lang) + m[3];

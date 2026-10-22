@@ -249,6 +249,7 @@ details.tip ul { margin: 0 0 8px; padding-left: 18px; color: var(--muted); font-
 .trim-len { color: var(--muted); font-variant-numeric: tabular-nums; }
 .trim-row .btn { padding: 7px 12px; }
 .run-note { padding: 0 16px 14px; margin: 0; }
+.diag { margin: 8px 0; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--sunken); font: 11px/1.45 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-all; max-height: 220px; overflow: auto; user-select: text; }
 .lang { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .lang button { border: 0; background: transparent; padding: 5px 10px; border-radius: 7px; cursor: pointer; color: var(--muted); font-size: 13px; min-height: 30px; }
 .lang button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
@@ -522,11 +523,18 @@ button, select, summary, .drop { touch-action: manipulation; }
           <div class="field">
             <span id="bgq-label">Модель</span>
             <div class="seg words" role="group" aria-labelledby="bgq-label" id="bgq">
+              <button type="button" data-v="none" aria-pressed="false">Без нейросети</button>
               <button type="button" data-v="fast" aria-pressed="false">Быстро</button>
               <button type="button" data-v="hq" aria-pressed="true">Точнее</button>
             </div>
           </div>
-          <p class="hint">«Точнее» скачивает модель около 42 МБ один раз: она лучше справляется с руками, волосами и мелкими деталями. «Быстро» весит около 5 МБ, но чаще ошибается. Большие фото уменьшаются до 2048 px.</p>
+          <p class="hint">«Точнее» скачивает модель около 42 МБ один раз: она лучше справляется с руками, волосами и мелкими деталями. «Быстро» весит около 5 МБ, но чаще ошибается. «Без нейросети» работает на любом устройстве, но хорошо вырезает только однотонный фон. Большие фото уменьшаются до 2048 px.</p>
+          <div class="field">
+            <button class="btn" id="bg-test" type="button">Проверить нейросеть</button>
+          </div>
+          <pre class="diag" id="bg-diag" hidden></pre>
+          <button class="btn ghost" id="bg-copy" type="button" hidden>Скопировать отчёт</button>
+          <p class="hint">Если удаление фона не работает, нажмите «Проверить нейросеть» и пришлите скопированный отчёт.</p>
         </div>
       </div>
       <!-- Trim mode -->
@@ -591,7 +599,7 @@ button, select, summary, .drop { touch-action: manipulation; }
     return new Promise((res, rej) => {
       const s = document.createElement('script');
       s.src = src; s.onload = res;
-      s.onerror = () => rej(new Error(LOAD_ERR));
+      s.onerror = () => { const e = new Error(LOAD_ERR); e.detail = src; rej(e); };
       document.head.appendChild(s);
     });
   }
@@ -745,7 +753,7 @@ button, select, summary, .drop { touch-action: manipulation; }
   bindSeg('cfmt', 'cfmt', String, () => renderQueue());
   bindSeg('vres', 'vres', String);
   bindSeg('pack', 'pack', String);
-  bindSeg('bgq', 'bgq', String);
+  bindSeg('bgq', 'bgq', String, () => { for (const k in bgBad) delete bgBad[k]; });
   $('pdf-pages').addEventListener('input', e => { opts.pdfPages = e.target.value; });
   $('pdf-join').checked = opts.pdfJoin;
   $('pdf-join').addEventListener('change', e => { opts.pdfJoin = e.target.checked; store.set(opts); });
@@ -1984,34 +1992,77 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   const BG_MODELS = { fast: 'models/u2netp.onnx', hq: 'models/silueta.onnx' };
   const bgSessions = {};
   let bgNote = false;
-  async function fetchModel(url, onProgress) {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Не удалось загрузить модель удаления фона. Проверьте интернет и попробуйте ещё раз.');
-    const total = +res.headers.get('content-length') || 0, packed = !!res.headers.get('content-encoding');
-    if (!res.body) return res.arrayBuffer();
-    // Chunks are collected as they come: the announced length can be wrong when the server compresses the file
-    const reader = res.body.getReader(), chunks = [];
-    let got = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value); got += value.length;
-      if (total && !packed) onProgress(Math.min(99, Math.round(got / total * 100)));
+  // What happened during background removal, step by step: shown in the settings so a failure can be reported
+  const bgLog = [];
+  const bgBad = {};
+  function envInfo() {
+    let simd = false;
+    try { simd = WebAssembly.validate(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 123, 3, 2, 1, 0, 10, 10, 1, 8, 0, 65, 0, 253, 15, 253, 98, 11])); } catch {}
+    return [`browser: ${navigator.userAgent}`, `webassembly: ${typeof WebAssembly === 'object'}, simd: ${simd}, isolated: ${!!window.crossOriginIsolated}`, `memory: ${navigator.deviceMemory || '?'} GB, cores: ${navigator.hardwareConcurrency || '?'}, page: ${location.origin}${location.pathname}`];
+  }
+  function showDiag() {
+    const el = $('bg-diag');
+    el.textContent = [...envInfo(), '', ...bgLog.slice(-16)].join('\n');
+    el.hidden = false; $('bg-copy').hidden = false;
+  }
+  function logLine(line) { bgLog.push(line); showDiag(); }
+  async function stage(name, p) {
+    const t = performance.now();
+    try { const v = await p; logLine(`OK   ${name} ${Math.round(performance.now() - t)} ms`); return v; }
+    catch (e) {
+      logLine(`FAIL ${name} ${Math.round(performance.now() - t)} ms: ${String((e && e.message) || e).slice(0, 200)}${e && e.detail ? ' [' + e.detail + ']' : ''}`);
+      if (e && typeof e === 'object') e.stage = e.stage || name;
+      throw e;
     }
-    const buf = new Uint8Array(got);
-    let at = 0;
-    for (const c of chunks) { buf.set(c, at); at += c.length; }
-    return buf.buffer;
+  }
+  function withTimeout(p, ms, what) {
+    return new Promise((res, rej) => {
+      const t = setTimeout(() => rej(new Error(`${what}: no answer in ${Math.round(ms / 1000)} s`)), ms);
+      p.then(v => { clearTimeout(t); res(v); }, e => { clearTimeout(t); rej(e); });
+    });
+  }
+  async function fetchModel(url, onProgress) {
+    // A download that gets no data for 30 seconds is given up on, so the page never hangs on a bad connection
+    const ac = new AbortController();
+    let idle;
+    const bump = () => { clearTimeout(idle); idle = setTimeout(() => ac.abort(), 30000); };
+    bump();
+    try {
+      const res = await fetch(url, { signal: ac.signal });
+      if (!res.ok) throw new Error(`model download: HTTP ${res.status}`);
+      const total = +res.headers.get('content-length') || 0, packed = !!res.headers.get('content-encoding');
+      if (!res.body) return await res.arrayBuffer();
+      // Chunks are collected as they come: the announced length can be wrong when the server compresses the file
+      const reader = res.body.getReader(), chunks = [];
+      let got = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        bump();
+        chunks.push(value); got += value.length;
+        if (total && !packed) onProgress(Math.min(99, Math.round(got / total * 100)));
+      }
+      const buf = new Uint8Array(got);
+      let at = 0;
+      for (const c of chunks) { buf.set(c, at); at += c.length; }
+      if (got < 100000) throw new Error(`model download: only ${got} bytes came`);
+      return buf.buffer;
+    } catch (e) {
+      if (ac.signal.aborted) throw new Error('model download stalled: no data for 30 s');
+      throw e;
+    } finally { clearTimeout(idle); }
   }
   function bgModel(key, onProgress) {
     if (!bgSessions[key]) {
       bgSessions[key] = (async () => {
-        await need('ort');
+        await stage('onnxruntime-lib', withTimeout(need('ort'), 40000, 'loading onnxruntime'));
         const ort = window.ort;
+        if (!ort || !ort.InferenceSession) throw new Error('onnxruntime did not start');
         ort.env.wasm.wasmPaths = CDN + 'onnxruntime-web@1.20.1/dist/';
         ort.env.wasm.numThreads = 1; // threads need a cross-origin isolated page, which static hosting can't give
+        const buf = await stage(`model-${key}`, fetchModel(BG_MODELS[key], onProgress));
         // Plain settings that keep memory use low, so that phones can run the model
-        return ort.InferenceSession.create(await fetchModel(BG_MODELS[key], onProgress), { executionProviders: ['wasm'], graphOptimizationLevel: 'basic', enableCpuMemArena: false, enableMemPattern: false });
+        return stage(`session-${key}`, withTimeout(ort.InferenceSession.create(buf, { executionProviders: ['wasm'], graphOptimizationLevel: 'basic', enableCpuMemArena: false, enableMemPattern: false }), 90000, 'starting the model'));
       })().catch(e => { delete bgSessions[key]; throw e; });
     }
     return bgSessions[key];
@@ -2066,7 +2117,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     for (let i = 0; i < N; i++) for (let k = 0; k < 3; k++) input[k * N + i] = (px[i * 4 + k] / max - mean[k]) / std[k];
     const sess = await bgModel(key, onProgress);
     const ort = window.ort;
-    const out = await sess.run({ [sess.inputNames[0]]: new ort.Tensor('float32', input, [1, 3, S, S]) });
+    const out = await stage(`run-${key}`, withTimeout(sess.run({ [sess.inputNames[0]]: new ort.Tensor('float32', input, [1, 3, S, S]) }), 90000, 'running the model'));
     const m = out[sess.outputNames[0]].data;
     let lo = Infinity, hi = -Infinity;
     for (let i = 0; i < N; i++) { if (m[i] < lo) lo = m[i]; if (m[i] > hi) hi = m[i]; }
@@ -2118,15 +2169,16 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       const c = drawImage(d, false, 2048);
       const W = c.width, H = c.height;
       let alpha, simple = false;
-      const keys = opts.bgq === 'fast' ? ['fast'] : ['hq', 'fast'];
+      const keys = (opts.bgq === 'none' ? [] : opts.bgq === 'fast' ? ['fast'] : ['hq', 'fast']).filter(k => !bgBad[k]);
       for (const key of keys) {
+        if (bgBad.ort) break;
         try { alpha = await neuralMask(c, key, onProgress); break; }
-        catch (e) { console.error(e); if (e instanceof Stopped) throw e; }
+        catch (e) { console.error(e); if (e instanceof Stopped) throw e; bgBad[key] = true; if (e && e.stage === 'onnxruntime-lib') bgBad.ort = true; }
       }
       if (!alpha) {
         simple = true;
         alpha = simpleMask(c);
-        if (!bgNote) { bgNote = true; toast('Нейросеть не запустилась на этом устройстве, поэтому использован простой способ. Он хорошо работает на однотонном фоне.'); }
+        if (opts.bgq !== 'none' && !bgNote) { bgNote = true; toast('Нейросеть не запустилась на этом устройстве, поэтому использован простой способ. Он хорошо работает на однотонном фоне.'); }
       }
       const ctx = c.getContext('2d'), img = ctx.getImageData(0, 0, W, H);
       for (let i = 0; i < W * H; i++) img.data[i * 4 + 3] = Math.round(img.data[i * 4 + 3] * alpha[i]);
@@ -2134,10 +2186,32 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       return { name: `${baseOf(item.file.name)}${WORD('-без-фона')}.png`, blob: await encodeCanvas(c, 'png'), simple };
     } finally { d.done(); }
   }
+  // The "check" button: runs every step on a tiny picture and writes down what worked
+  $('bg-test').addEventListener('click', async () => {
+    const b = $('bg-test'); b.disabled = true;
+    bgLog.length = 0; for (const k in bgBad) delete bgBad[k];
+    logLine('self-test started, model: ' + opts.bgq);
+    try {
+      const c = document.createElement('canvas'); c.width = c.height = 64;
+      const g = c.getContext('2d'); g.fillStyle = '#7aa'; g.fillRect(0, 0, 64, 64); g.fillStyle = '#c33'; g.beginPath(); g.arc(32, 32, 16, 0, 7); g.fill();
+      try { simpleMask(c); logLine('OK   simple method'); } catch (e) { logLine('FAIL simple method: ' + e.message); }
+      if (opts.bgq === 'none') logLine('neural network is switched off in the settings');
+      else {
+        const key = opts.bgq === 'fast' ? 'fast' : 'hq';
+        try { await neuralMask(c, key, () => {}); logLine(`RESULT neural network works (${key})`); }
+        catch (e) { logLine(`RESULT neural network does NOT work (${key}), stage: ${e && e.stage || 'unknown'}`); }
+      }
+    } finally { b.disabled = false; }
+  });
+  $('bg-copy').addEventListener('click', async () => {
+    const t = $('bg-diag').textContent;
+    try { await navigator.clipboard.writeText(t); toast('Отчёт скопирован'); }
+    catch { const r = document.createRange(); r.selectNodeContents($('bg-diag')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); toast('Выделите отчёт и скопируйте его вручную'); }
+  });
   async function runBg(todo) {
     for (const it of todo) {
       if (stopRequested) { it.status = 'error'; it.note = 'Остановлено'; continue; }
-      it.status = 'working'; it.note = bgSessions[opts.bgq] ? '' : 'загружаю модель'; renderQueue();
+      it.status = 'working'; it.note = (opts.bgq === 'none' || bgSessions[opts.bgq]) ? '' : 'загружаю модель'; renderQueue();
       await tick();
       try {
         const out = await raceStop(removeBackground(it, pct => setNote(it, `загружаю модель ${pct}%`)));
