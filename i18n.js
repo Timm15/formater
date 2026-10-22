@@ -3,6 +3,9 @@
 (function () {
   'use strict';
   const D = {
+"Максимум": ["Maximum", "最高"],
+"считаю, это может занять до минуты": ["calculating, this may take up to a minute", "正在计算，最多可能需要一分钟"],
+"«Максимум» качает модель около 90 МБ, а на каждое фото уходит до минуты. Зато края и мелкие детали получаются аккуратнее. Если модель не запустится, сайт сам вернётся к «Точнее».": ["\"Maximum\" downloads a model of about 90 MB, and each photo takes up to a minute. In return the edges and fine details come out neater. If the model can't start, the site falls back to \"More accurate\" by itself.", "“最高”会下载约 90 MB 的模型，每张照片最多需要一分钟。作为回报，边缘和细节更加精细。如果模型无法启动，网站会自动退回到“更精确”。"],
 "Без нейросети": ["No neural network", "不用神经网络"],
 "Проверить нейросеть": ["Check the neural network", "检查神经网络"],
 "Скопировать отчёт": ["Copy report", "复制报告"],

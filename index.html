@@ -526,9 +526,11 @@ button, select, summary, .drop { touch-action: manipulation; }
               <button type="button" data-v="none" aria-pressed="false">Без нейросети</button>
               <button type="button" data-v="fast" aria-pressed="false">Быстро</button>
               <button type="button" data-v="hq" aria-pressed="true">Точнее</button>
+              <button type="button" data-v="max" aria-pressed="false">Максимум</button>
             </div>
           </div>
           <p class="hint">«Точнее» скачивает модель около 42 МБ один раз: она лучше справляется с руками, волосами и мелкими деталями. «Быстро» весит около 5 МБ, но чаще ошибается. «Без нейросети» работает на любом устройстве, но хорошо вырезает только однотонный фон. Большие фото уменьшаются до 2048 px.</p>
+          <p class="hint">«Максимум» качает модель около 90 МБ, а на каждое фото уходит до минуты. Зато края и мелкие детали получаются аккуратнее. Если модель не запустится, сайт сам вернётся к «Точнее».</p>
           <div class="field">
             <button class="btn" id="bg-test" type="button">Проверить нейросеть</button>
           </div>
@@ -1989,7 +1991,9 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
 
   // ---------- Background removal ----------
   const bgOk = it => it.kind === 'image' && it.ext !== 'svg';
-  const BG_MODELS = { fast: 'models/u2netp.onnx', hq: 'models/silueta.onnx' };
+  const BG_MODELS = { fast: 'models/u2netp.onnx', hq: 'models/silueta.onnx', max: 'models/isnet.onnx' };
+  // Input size and normalisation each network was trained with
+  const BG_CFG = { fast: { S: 320, std: [0.229, 0.224, 0.225] }, hq: { S: 320, std: [0.229, 0.224, 0.225] }, max: { S: 1024, std: [1, 1, 1] } };
   const bgSessions = {};
   let bgNote = false;
   // What happened during background removal, step by step: shown in the settings so a failure can be reported
@@ -2006,9 +2010,9 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     el.hidden = false; $('bg-copy').hidden = false;
   }
   function logLine(line) { bgLog.push(line); showDiag(); }
-  async function stage(name, p) {
+  async function stage(name, work) {
     const t = performance.now();
-    try { const v = await p; logLine(`OK   ${name} ${Math.round(performance.now() - t)} ms`); return v; }
+    try { const v = await work(); logLine(`OK   ${name} ${Math.round(performance.now() - t)} ms`); return v; }
     catch (e) {
       logLine(`FAIL ${name} ${Math.round(performance.now() - t)} ms: ${String((e && e.message) || e).slice(0, 200)}${e && e.detail ? ' [' + e.detail + ']' : ''}`);
       if (e && typeof e === 'object') e.stage = e.stage || name;
@@ -2055,14 +2059,14 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   function bgModel(key, onProgress) {
     if (!bgSessions[key]) {
       bgSessions[key] = (async () => {
-        await stage('onnxruntime-lib', withTimeout(need('ort'), 40000, 'loading onnxruntime'));
+        await stage('onnxruntime-lib', () => withTimeout(need('ort'), 40000, 'loading onnxruntime'));
         const ort = window.ort;
         if (!ort || !ort.InferenceSession) throw new Error('onnxruntime did not start');
         ort.env.wasm.wasmPaths = CDN + 'onnxruntime-web@1.20.1/dist/';
         ort.env.wasm.numThreads = 1; // threads need a cross-origin isolated page, which static hosting can't give
-        const buf = await stage(`model-${key}`, fetchModel(BG_MODELS[key], onProgress));
+        const buf = await stage(`model-${key}`, () => fetchModel(BG_MODELS[key], onProgress));
         // Plain settings that keep memory use low, so that phones can run the model
-        return stage(`session-${key}`, withTimeout(ort.InferenceSession.create(buf, { executionProviders: ['wasm'], graphOptimizationLevel: 'basic', enableCpuMemArena: false, enableMemPattern: false }), 90000, 'starting the model'));
+        return stage(`session-${key}`, () => withTimeout(ort.InferenceSession.create(buf, { executionProviders: ['wasm'], graphOptimizationLevel: 'basic', enableCpuMemArena: false, enableMemPattern: false }), 120000, 'starting the model'));
       })().catch(e => { delete bgSessions[key]; throw e; });
     }
     return bgSessions[key];
@@ -2105,19 +2109,20 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   }
   // Soft mask (0..1 per pixel) from the neural network: the better model first, the light one if it can't start
   async function neuralMask(c, key, onProgress) {
-    const W = c.width, H = c.height, S = 320;
+    const W = c.width, H = c.height, { S, std } = BG_CFG[key];
     // The network sees a 320x320 copy, normalised the way U2-Net was trained
     const sc = document.createElement('canvas'); sc.width = sc.height = S;
     const sg = sc.getContext('2d'); sg.imageSmoothingQuality = 'high'; sg.drawImage(c, 0, 0, S, S);
     const px = sg.getImageData(0, 0, S, S).data;
     let max = 1;
     for (let i = 0; i < px.length; i += 4) max = Math.max(max, px[i], px[i + 1], px[i + 2]);
-    const mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225], N = S * S;
+    const mean = [0.485, 0.456, 0.406], N = S * S;
     const input = new Float32Array(3 * N);
     for (let i = 0; i < N; i++) for (let k = 0; k < 3; k++) input[k * N + i] = (px[i * 4 + k] / max - mean[k]) / std[k];
     const sess = await bgModel(key, onProgress);
+    onProgress(-1); // the download is over, the slow part starts
     const ort = window.ort;
-    const out = await stage(`run-${key}`, withTimeout(sess.run({ [sess.inputNames[0]]: new ort.Tensor('float32', input, [1, 3, S, S]) }), 90000, 'running the model'));
+    const out = await stage(`run-${key}`, () => withTimeout(sess.run({ [sess.inputNames[0]]: new ort.Tensor('float32', input, [1, 3, S, S]) }), 300000, 'running the model'));
     const m = out[sess.outputNames[0]].data;
     let lo = Infinity, hi = -Infinity;
     for (let i = 0; i < N; i++) { if (m[i] < lo) lo = m[i]; if (m[i] > hi) hi = m[i]; }
@@ -2169,7 +2174,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       const c = drawImage(d, false, 2048);
       const W = c.width, H = c.height;
       let alpha, simple = false;
-      const keys = (opts.bgq === 'none' ? [] : opts.bgq === 'fast' ? ['fast'] : ['hq', 'fast']).filter(k => !bgBad[k]);
+      const keys = ({ none: [], fast: ['fast'], hq: ['hq', 'fast'], max: ['max', 'hq', 'fast'] }[opts.bgq] || ['hq', 'fast']).filter(k => !bgBad[k]);
       for (const key of keys) {
         if (bgBad.ort) break;
         try { alpha = await neuralMask(c, key, onProgress); break; }
@@ -2197,7 +2202,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       try { simpleMask(c); logLine('OK   simple method'); } catch (e) { logLine('FAIL simple method: ' + e.message); }
       if (opts.bgq === 'none') logLine('neural network is switched off in the settings');
       else {
-        const key = opts.bgq === 'fast' ? 'fast' : 'hq';
+        const key = ['fast', 'hq', 'max'].includes(opts.bgq) ? opts.bgq : 'hq';
         try { await neuralMask(c, key, () => {}); logLine(`RESULT neural network works (${key})`); }
         catch (e) { logLine(`RESULT neural network does NOT work (${key}), stage: ${e && e.stage || 'unknown'}`); }
       }
@@ -2214,7 +2219,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       it.status = 'working'; it.note = (opts.bgq === 'none' || bgSessions[opts.bgq]) ? '' : 'загружаю модель'; renderQueue();
       await tick();
       try {
-        const out = await raceStop(removeBackground(it, pct => setNote(it, `загружаю модель ${pct}%`)));
+        const out = await raceStop(removeBackground(it, pct => setNote(it, pct < 0 ? (opts.bgq === 'max' ? 'считаю, это может занять до минуты' : '') : `загружаю модель ${pct}%`)));
         addResult(out, undefined, true);
         renderResults();
         it.status = 'done'; it.note = out.simple ? 'простой способ' : '';
