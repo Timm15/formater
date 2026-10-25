@@ -407,7 +407,7 @@ button, select, summary, .drop { touch-action: manipulation; }
           </div>
           <p class="hint">Фон нужен для JPG, BMP и PDF: у них нет прозрачности.</p>
         </div>
-        <div class="set" data-cats="image">
+        <div class="set" data-cats="image:pdf">
           <h3>PDF из картинок</h3>
           <div class="field">
             <span id="page-label">Размер страницы</span>
@@ -436,7 +436,7 @@ button, select, summary, .drop { touch-action: manipulation; }
           </div>
           <p class="hint" id="pdf-hint"></p>
         </div>
-        <div class="set" data-cats="pdf table">
+        <div class="set" data-cats="pdf:png,jpg table:csv">
           <h3>Если файлов получается много</h3>
           <div class="seg words" role="group" aria-label="Упаковка результата" id="pack">
             <button type="button" data-v="auto" aria-pressed="true">Авто</button>
@@ -445,7 +445,7 @@ button, select, summary, .drop { touch-action: manipulation; }
           </div>
           <p class="hint">Авто: если из одного файла выходит больше 10 файлов, они упаковываются в один ZIP. Так удобно скачивать PDF на сотни страниц.</p>
         </div>
-        <div class="set" data-cats="video">
+        <div class="set" data-cats="video:gif">
           <h3>Видео в GIF</h3>
           <div class="field">
             <span id="gifw-label">Ширина GIF</span>
@@ -465,7 +465,7 @@ button, select, summary, .drop { touch-action: manipulation; }
           </div>
           <p class="hint">GIF делается из первых 30 секунд видео.</p>
         </div>
-        <div class="set" data-cats="table">
+        <div class="set" data-cats="table:csv">
           <h3>Таблицы</h3>
           <div class="field">
             <span id="sep-label">Разделитель в CSV</span>
@@ -477,7 +477,7 @@ button, select, summary, .drop { touch-action: manipulation; }
           </div>
           <p class="hint">Кириллица в CSV сохраняется так, что Excel открывает её без кракозябр.</p>
         </div>
-        <div class="set" data-cats="doc table">
+        <div class="set" data-cats="doc:pdf table:pdf">
           <h3>Документы в PDF</h3>
           <p class="hint">Страницы A4 сохраняются как изображения: вёрстка и кириллица точно как на экране, но текст в PDF не выделяется.</p>
         </div>
@@ -485,7 +485,7 @@ button, select, summary, .drop { touch-action: manipulation; }
 
       <!-- Compress mode -->
       <div data-for="compress" hidden>
-        <div class="set" data-cats="image video audio">
+        <div class="set" data-cats="image video audio" data-core>
           <h3>Сила сжатия</h3>
           <div class="seg words" role="group" aria-label="Сила сжатия" id="level">
             <button type="button" data-v="light" aria-pressed="false">Слабо</button>
@@ -803,7 +803,7 @@ button, select, summary, .drop { touch-action: manipulation; }
   bindSeg('cfmt', 'cfmt', String, () => renderQueue());
   bindSeg('vres', 'vres', String);
   bindSeg('pack', 'pack', String);
-  bindSeg('ptool', 'ptool', String, () => { ptoolUi(); setGoLabel(); renderQueue(); });
+  bindSeg('ptool', 'ptool', String, () => { ptoolUi(); setGoLabel(); resetDone(); renderQueue(); });
   bindSeg('prot', 'prot', Number);
   $('pt-pages').value = opts.ptPages;
   $('pt-pages').addEventListener('input', e => { opts.ptPages = e.target.value; store.set(opts); });
@@ -851,6 +851,7 @@ button, select, summary, .drop { touch-action: manipulation; }
     const m = opts.mode;
     $('go-label').textContent = m === 'convert' ? 'Конвертировать' : m === 'compress' ? 'Сжать' : m === 'trim' ? 'Обрезать' : m === 'bg' ? 'Убрать фон' : PT_GO[opts.ptool] || 'Объединить';
   }
+  function resetDone() { items.forEach(it => { if (it.status === 'done' || it.status === 'error' || it.status === 'skip') { it.status = 'ready'; it.note = ''; } }); }
   function setMode(m) {
     opts.mode = m; store.set(opts);
     document.querySelectorAll('.modes [role="tab"]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.mode === m)));
@@ -869,7 +870,7 @@ button, select, summary, .drop { touch-action: manipulation; }
       : (m === 'convert'
         ? 'или нажмите, чтобы выбрать. Можно сразу много, можно вставить картинку через Ctrl+V.'
         : 'Фото, видео или аудио. Покажем, на сколько уменьшился каждый файл.');
-    items.forEach(it => { if (it.status === 'done' || it.status === 'error' || it.status === 'skip') { it.status = 'ready'; it.note = ''; } });
+    resetDone();
     if (m === 'trim') items.forEach(it => { if (it.kind === 'audio' || it.kind === 'video') { ownTarget(it); it.edit = true; loadWave(it); } });
     renderQueue();
   }
@@ -1001,7 +1002,7 @@ button, select, summary, .drop { touch-action: manipulation; }
   $('queue').addEventListener('change', e => {
     const s = e.target.closest('select[data-id]'); if (!s) return;
     const it = items.find(i => i.id === +s.dataset.id);
-    if (it) { it.target = s.value; it.touched = true; if (it.status !== 'ready' && it.status !== 'working') { it.status = 'ready'; it.note = ''; renderQueue(); } }
+    if (it) { it.target = s.value; it.touched = true; if (it.status !== 'ready' && it.status !== 'working') { it.status = 'ready'; it.note = ''; } renderQueue(); }
   });
   $('queue').addEventListener('click', e => {
     const mv = e.target.closest('[data-up],[data-down]');
@@ -1140,26 +1141,26 @@ button, select, summary, .drop { touch-action: manipulation; }
     return `<details class="tip" data-cat="${c}"${open ? ' open' : ''}><summary><span class="dot" style="background:var(--fam-${c})"></span>${t.title}</summary><ul>${t.items.map(x => `<li>${x}</li>`).join('')}</ul></details>`;
   }
   function renderTips(cats) {
-    const key = opts.mode + '|' + [...cats].sort().join();
+    const key = opts.mode + '|' + opts.ptool + '|' + items.length + '|' + [...cats].sort().join();
     if (key === tipsKey) return;
     tipsKey = key;
-    const present = CAT_ORDER.filter(c => cats.has(c) && TIPS[opts.mode][c]);
-    const rest = CAT_ORDER.filter(c => !cats.has(c) && TIPS[opts.mode][c]);
-    let html = '';
-    if (!present.length && !items.length) html += '<p class="hint">Добавьте файлы, и здесь появятся подсказки именно для них. А пока вот что умеет каждый тип.</p>';
-    html += present.map(c => tipHtml(c, tipState.has(c) ? tipState.get(c) : true)).join('');
-    if (present.length && rest.length) html += '<p class="hint tips-more">Для других типов файлов</p>';
-    html += rest.map(c => tipHtml(c, tipState.has(c) ? tipState.get(c) : false)).join('');
-    $('tips').innerHTML = html;
+    const present = CAT_ORDER.filter(c => cats.has(c) && TIPS[opts.mode][c] && !(opts.mode === 'pdf' && c === 'image' && opts.ptool !== 'merge'));
+    $('tips').innerHTML = present.length ? present.map(c => tipHtml(c, tipState.has(c) ? tipState.get(c) : true)).join('')
+      : `<p class="hint">${items.length ? 'Для этих файлов здесь подсказок нет.' : 'Добавьте файлы, и здесь появятся подсказки и настройки именно для них.'}</p>`;
   }
   $('tips').addEventListener('toggle', e => { const d = e.target.closest('details[data-cat]'); if (d) tipState.set(d.dataset.cat, d.open); }, true);
 
   // Settings that don't apply to the queued files stay out of the way
   let showAllSettings = false;
+  // A token is a file type ("video") or a type with the formats it matters for ("video:gif")
+  function needed(token) {
+    const [cat, outs] = token.split(':');
+    return items.some(it => it.kind && catOf(it.kind) === cat && (!outs || opts.mode !== 'convert' || outs.split(',').includes(it.target)));
+  }
   function applyRelevance(cats) {
     let hiddenAny = false;
     document.querySelectorAll('[data-cats]').forEach(el => {
-      const hide = !showAllSettings && cats.size > 0 && !el.dataset.cats.split(' ').some(c => cats.has(c));
+      const hide = !showAllSettings && (cats.size ? !el.dataset.cats.split(' ').some(needed) : !el.hasAttribute('data-core'));
       el.hidden = hide;
       const box = el.closest('[data-for]');
       if (hide && box && box.dataset.for === opts.mode) hiddenAny = true;
@@ -1459,10 +1460,13 @@ button, select, summary, .drop { touch-action: manipulation; }
       try { return await imgFrom(file); } catch {}
       await need('pako'); await need('utif');
       const buf = await file.arrayBuffer();
-      const ifds = window.UTIF.decode(buf);
-      if (!ifds.length) throw new Error('Не удалось прочитать TIFF.');
-      window.UTIF.decodeImage(buf, ifds[0]);
-      const rgba = window.UTIF.toRGBA8(ifds[0]);
+      let ifds, rgba;
+      try {
+        ifds = window.UTIF.decode(buf);
+        window.UTIF.decodeImage(buf, ifds[0]);
+        rgba = window.UTIF.toRGBA8(ifds[0]);
+      } catch { ifds = null; }
+      if (!ifds || !ifds.length || !rgba) throw new Error('Не удалось прочитать TIFF: такой вид сжатия браузер не понимает. Пересохраните файл в PNG или JPG.');
       const w = ifds[0].width, h = ifds[0].height;
       const c = document.createElement('canvas'); c.width = w; c.height = h;
       c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(rgba.buffer, rgba.byteOffset, w * h * 4), w, h), 0, 0);
@@ -2374,7 +2378,8 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
         renderQueue();
       }
       pages = out.getPageCount();
-      if (pages && !stopRequested) {
+      if (stopRequested) { todo.forEach(it => { if (it.status !== 'error') { it.status = 'error'; it.note = 'Остановлено'; } }); return; }
+      if (pages) {
         addResult({ name: `${WORD('объединено')}-${todo.filter(i => i.status === 'done').length}.pdf`, blob: await pdfBlob(out) });
         todo.forEach(it => { if (it.status === 'done') it.note = 'в общем PDF'; });
       }
@@ -2553,7 +2558,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     if (/JSON/i.test(m) && /position|token|Unexpected/i.test(m)) return 'В JSON ошибка, его не удалось прочитать.';
     if (/memory|allocation/i.test(m)) return 'Не хватило памяти. Попробуйте файл поменьше или закройте другие вкладки.';
     if (/модел/.test(m)) return m;
-    if (/^[A-Za-z]/.test(m)) return 'Не получилось: файл повреждён или в необычном формате.';
+    if (!/[А-Яа-яЁё]/.test(m)) return 'Не получилось: файл повреждён или в необычном формате.';
     return m;
   }
 

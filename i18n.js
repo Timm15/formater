@@ -3,6 +3,9 @@
 (function () {
   'use strict';
   const D = {
+"Добавьте файлы, и здесь появятся подсказки и настройки именно для них.": ["Add files, and tips and settings for exactly those files will appear here.", "添加文件后，这里会显示适用于这些文件的提示和设置。"],
+"Для этих файлов здесь подсказок нет.": ["There are no tips for these files here.", "这些文件在此没有提示。"],
+"Не удалось прочитать TIFF: такой вид сжатия браузер не понимает. Пересохраните файл в PNG или JPG.": ["Couldn't read the TIFF: the browser doesn't understand this kind of compression. Save the file as PNG or JPG and try again.", "无法读取 TIFF：浏览器不支持这种压缩方式。请将文件另存为 PNG 或 JPG。"],
 "Работа с PDF": ["PDF tools", "PDF 工具"],
 "Что сделать": ["What to do", "操作"],
 "Объединить": ["Merge", "合并"],
