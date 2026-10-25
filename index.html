@@ -290,6 +290,28 @@ button, select, summary, .drop { touch-action: manipulation; }
   input[type="range"] { min-height: 32px; }
   input[type="color"] { width: 48px; height: 44px; }
 }
+/* Metadata panels */
+.meta-li { border-top: 1px solid var(--line); padding: 12px 16px 14px; display: grid; gap: 10px; background: var(--sunken); }
+.meta-li .hint { display: flex; align-items: center; gap: 8px; }
+.meta-sum { margin: 0; font-size: 14px; }
+.meta-sum.warn { color: var(--warn); }
+.meta-sum.ok { color: var(--ok); }
+.mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.mgroup { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.mgroup h4 { margin: 0 0 6px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.mgroup.place { border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); }
+.mgroup.place h4 { color: var(--warn); }
+.meta-li dl { margin: 0; display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); gap: 4px 12px; font-size: 13.5px; }
+.meta-li dt { color: var(--muted); }
+.meta-li dd { margin: 0; overflow-wrap: anywhere; }
+.meta-li a { color: var(--accent); }
+.mraw summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+.mraw dl { margin-top: 8px; font-family: var(--mono); font-size: 12px; max-height: 320px; overflow: auto; padding: 8px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.btn.minfo { padding: 6px 12px; font-size: 13px; font-weight: 500; }
+.btn.minfo.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+@media (max-width: 560px) { .meta-li { padding: 10px 12px 12px; } .mgrid { grid-template-columns: minmax(0, 1fr); } .meta-li dl { grid-template-columns: minmax(0, 38%) minmax(0, 1fr); } }
+details.more-help summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+details.more-help[open] { display: grid; gap: 8px; }
 </style>
 </head>
 <body>
@@ -304,7 +326,7 @@ button, select, summary, .drop { touch-action: manipulation; }
         </svg>
         <h1>Formater</h1>
       </div>
-      <p class="tagline">Конвертирует, сжимает и обрезает фото, видео, аудио, PDF, таблицы и документы. Перетащите файлы, выберите формат и скачайте результат.</p>
+      <p class="tagline">Конвертирует, сжимает и обрезает фото, видео, аудио, PDF, таблицы и документы, убирает фон и метаданные. Перетащите файлы, выберите действие и скачайте результат.</p>
     </div>
     <div class="lang" role="group" aria-label="Language">
       <button type="button" data-lang="ru" aria-pressed="false">RU</button>
@@ -337,6 +359,10 @@ button, select, summary, .drop { touch-action: manipulation; }
     <button type="button" role="tab" id="tab-pdf" data-mode="pdf" aria-selected="false">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 1.5h5.5L13 5v9.5H4z"/><path d="M9.5 1.5V5H13M6.5 9h4M6.5 11.5h4"/></svg>
       PDF
+    </button>
+    <button type="button" role="tab" id="tab-meta" data-mode="meta" aria-selected="false">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 2.5h5.5l6.5 6.5-5 5-6.5-6.5z"/><circle cx="5.2" cy="5.7" r="1.1"/></svg>
+      Метаданные
     </button>
   </div>
 
@@ -393,19 +419,22 @@ button, select, summary, .drop { touch-action: manipulation; }
       <div data-for="convert">
         <div class="set" data-cats="image">
           <h3>Картинки</h3>
-          <div class="field">
+          <div class="field" data-cats="image:jpg,webp">
             <div class="field-row"><label for="quality">Качество JPG и WEBP</label><output id="quality-out">90</output></div>
             <input type="range" id="quality" min="10" max="100" step="1" value="90">
+            <p class="hint">90 почти не отличить от оригинала. Меньше 70 файл заметно легче, но могут появиться пятна.</p>
           </div>
           <div class="field">
-            <label for="maxside">Длинная сторона не больше, px</label>
-            <input type="number" id="maxside" min="16" max="20000" step="1" placeholder="без изменений">
+            <label for="maxside">Уменьшить: длинная сторона не больше, px</label>
+            <input type="number" id="maxside" min="16" max="20000" step="1" placeholder="не уменьшать">
           </div>
-          <div class="field-row">
-            <label for="bg">Фон вместо прозрачности</label>
-            <input type="color" id="bg" value="#ffffff">
+          <div class="field" data-cats="image:jpg,bmp,pdf">
+            <div class="field-row">
+              <label for="bg">Фон вместо прозрачности</label>
+              <input type="color" id="bg" value="#ffffff">
+            </div>
+            <p class="hint">У JPG, BMP и PDF нет прозрачности, поэтому пустые места PNG заливаются этим цветом.</p>
           </div>
-          <p class="hint">Фон нужен для JPG, BMP и PDF: у них нет прозрачности.</p>
         </div>
         <div class="set" data-cats="image:pdf">
           <h3>PDF из картинок</h3>
@@ -417,7 +446,7 @@ button, select, summary, .drop { touch-action: manipulation; }
               <button type="button" data-v="letter" aria-pressed="false">Letter</button>
             </div>
           </div>
-          <label class="check"><input type="checkbox" id="merge" checked> Собрать все картинки в один PDF</label>
+          <label class="check" id="merge-row"><input type="checkbox" id="merge" checked> Собрать все картинки в один PDF</label>
         </div>
         <div class="set" data-cats="pdf">
           <h3>PDF: страницы</h3>
@@ -425,19 +454,19 @@ button, select, summary, .drop { touch-action: manipulation; }
             <label for="pdf-pages">Какие страницы</label>
             <input type="text" id="pdf-pages" placeholder="все, или например 1-5, 8, 11-" autocomplete="off" spellcheck="false">
           </div>
-          <label class="check"><input type="checkbox" id="pdf-join"> Склеить страницы в одну длинную картинку</label>
-          <div class="field">
-            <span id="dpi-label">Разрешение картинок</span>
+          <label class="check" data-cats="pdf:png,jpg"><input type="checkbox" id="pdf-join"> Склеить страницы в одну длинную картинку</label>
+          <div class="field" data-cats="pdf:png,jpg">
+            <span id="dpi-label">Чёткость картинок</span>
             <div class="seg" role="group" aria-labelledby="dpi-label" id="dpi">
               <button type="button" data-v="96" aria-pressed="false">96 dpi</button>
               <button type="button" data-v="150" aria-pressed="true">150 dpi</button>
               <button type="button" data-v="300" aria-pressed="false">300 dpi</button>
             </div>
           </div>
-          <p class="hint" id="pdf-hint"></p>
+          <p class="hint" id="pdf-hint" data-cats="pdf:png,jpg"></p>
         </div>
         <div class="set" data-cats="pdf:png,jpg table:csv">
-          <h3>Если файлов получается много</h3>
+          <h3>Если на выходе много файлов</h3>
           <div class="seg words" role="group" aria-label="Упаковка результата" id="pack">
             <button type="button" data-v="auto" aria-pressed="true">Авто</button>
             <button type="button" data-v="sep" aria-pressed="false">Отдельно</button>
@@ -565,7 +594,7 @@ button, select, summary, .drop { touch-action: manipulation; }
       <div data-for="bg" hidden>
         <div class="set">
           <h3>Удаление фона</h3>
-          <p class="hint">Нейросеть находит главный предмет на фото и делает всё остальное прозрачным. Всё считается в вашем браузере, фото никуда не отправляется.</p>
+          <p class="hint">Нейросеть находит главный предмет на фото и делает всё остальное прозрачным. Фото никуда не отправляется.</p>
           <div class="field">
             <span id="bgq-label">Модель</span>
             <div class="seg words grid2" role="group" aria-labelledby="bgq-label" id="bgq">
@@ -575,14 +604,17 @@ button, select, summary, .drop { touch-action: manipulation; }
               <button type="button" data-v="max" aria-pressed="false">Максимум</button>
             </div>
           </div>
-          <p class="hint">«Точнее» скачивает модель около 42 МБ один раз: она лучше справляется с руками, волосами и мелкими деталями. «Быстро» весит около 5 МБ, но чаще ошибается. «Без нейросети» работает на любом устройстве, но хорошо вырезает только однотонный фон. Большие фото уменьшаются до 2048 px.</p>
-          <p class="hint">«Максимум» качает модель около 90 МБ, а на каждое фото уходит до минуты. Зато края и мелкие детали получаются аккуратнее. Если модель не запустится, сайт сам вернётся к «Точнее».</p>
-          <div class="field">
-            <button class="btn" id="bg-test" type="button">Проверить нейросеть</button>
-          </div>
-          <pre class="diag" id="bg-diag" hidden></pre>
-          <button class="btn ghost" id="bg-copy" type="button" hidden>Скопировать отчёт</button>
-          <p class="hint">Если удаление фона не работает, нажмите «Проверить нейросеть» и пришлите скопированный отчёт.</p>
+          <p class="hint" id="bgq-hint"></p>
+          <p class="hint">Большие фото уменьшаются до 2048 px. Результат всегда PNG с прозрачным фоном.</p>
+          <details class="more-help">
+            <summary>Не работает?</summary>
+            <p class="hint">Нажмите «Проверить нейросеть» и пришлите скопированный отчёт.</p>
+            <div class="field">
+              <button class="btn" id="bg-test" type="button">Проверить нейросеть</button>
+            </div>
+            <pre class="diag" id="bg-diag" hidden></pre>
+            <button class="btn ghost" id="bg-copy" type="button" hidden>Скопировать отчёт</button>
+          </details>
         </div>
       </div>
       <!-- Trim mode -->
@@ -593,8 +625,27 @@ button, select, summary, .drop { touch-action: manipulation; }
           <p class="hint">Формат результата выбирается справа от файла. По умолчанию остаётся тот же, что был.</p>
         </div>
       </div>
+      <!-- Metadata -->
+      <div data-for="meta" hidden>
+        <div class="set">
+          <h3>Метаданные</h3>
+          <p class="hint">Под каждым файлом видно, что в нём спрятано: где и когда снято, на что, кто автор. Кнопка внизу сохранит копии без этих данных.</p>
+          <div class="field" data-cats="image video" data-core>
+            <span id="mwhat-label">Что удалить</span>
+            <div class="seg words" role="group" aria-labelledby="mwhat-label" id="mwhat">
+              <button type="button" data-v="all" aria-pressed="true">Всё</button>
+              <button type="button" data-v="gps" aria-pressed="false">Только место</button>
+            </div>
+          </div>
+          <p class="hint" id="mwhat-hint"></p>
+          <p class="hint">Страна определяется по карте границ прямо в браузере: ни файлы, ни координаты никуда не отправляются.</p>
+        </div>
+      </div>
       <div class="set" id="more-wrap" hidden>
         <button class="btn ghost" id="more-settings" type="button">Показать все настройки</button>
+      </div>
+      <div class="set" id="reset-wrap" hidden>
+        <button class="btn ghost" id="reset-settings" type="button">Вернуть настройки по умолчанию</button>
       </div>
     </aside>
   </div>
@@ -614,6 +665,7 @@ button, select, summary, .drop { touch-action: manipulation; }
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script src="i18n.js"></script>
+<script src="meta.js"></script>
 <script>
 (() => {
   'use strict';
@@ -636,6 +688,7 @@ button, select, summary, .drop { touch-action: manipulation; }
     upng: ['upng-js@2.1.0/UPNG.js'],
     ort: ['onnxruntime-web@1.20.1/dist/ort.min.js'],
     pdflib: ['pdf-lib@1.17.1/dist/pdf-lib.min.js'],
+    exifr: ['exifr@7.1.3/dist/full.umd.js'],
     mp3enc: ['@mediabunny/mp3-encoder@1.61.3/dist/bundles/mediabunny-mp3-encoder.min.js'],
   };
   const MODULES = {
@@ -693,6 +746,7 @@ button, select, summary, .drop { touch-action: manipulation; }
     ['Обрезка', ['mp3', 'wav', 'm4a', 'ogg', 'mp4', 'mov', 'webm', 'mkv'], ['mp3', 'wav', 'm4a', 'ogg', 'mp4', 'webm', 'mov', 'mkv']],
     ['Работа с PDF', ['pdf', 'jpg', 'png', 'webp', 'heic'], ['pdf']],
     ['Сжатие', ['jpg', 'png', 'webp', 'heic', 'mp4', 'mov', 'webm', 'mp3', 'wav'], ['jpg', 'png', 'webp', 'mp4', 'webm', 'mp3']],
+    ['Метаданные', ['jpg', 'png', 'webp', 'heic', 'mp4', 'mov', 'mp3', 'wav', 'pdf', 'docx', 'xlsx'], ['jpg', 'png', 'webp', 'mp4', 'mov', 'mp3', 'wav', 'pdf', 'docx', 'xlsx']],
   ];
   function extOf(name) { const m = /\.([a-z0-9]+)$/i.exec(name); return m ? m[1].toLowerCase() : ''; }
   function baseOf(name) { return name.replace(/\.[^.]+$/, '') || 'file'; }
@@ -774,16 +828,19 @@ button, select, summary, .drop { touch-action: manipulation; }
   let pixelNote = false;
 
   // ---------- Settings ----------
-  const opts = { mode: 'convert', quality: 0.9, maxSide: 0, bg: '#ffffff', page: 'fit', merge: true, dpi: 150, sep: ';', gifw: 480, giff: 12, level: 'medium', cfmt: 'same', targetKb: 0, cmax: 0, vres: 'auto', mute: false, pdfPages: '', pdfJoin: false, pack: 'auto', bgq: 'hq', ptool: 'merge', prot: 90, ptPages: '' };
+  const opts = { mode: 'convert', quality: 0.9, maxSide: 0, bg: '#ffffff', page: 'fit', merge: true, dpi: 150, sep: ';', gifw: 480, giff: 12, level: 'medium', cfmt: 'same', targetKb: 0, cmax: 0, vres: 'auto', mute: false, pdfPages: '', pdfJoin: false, pack: 'auto', bgq: 'hq', ptool: 'merge', prot: 90, ptPages: '', mwhat: 'all' };
   const store = {
     get() { try { return JSON.parse(localStorage.getItem('formater-opts') || 'null'); } catch { return null; } },
     set(v) { try { localStorage.setItem('formater-opts', JSON.stringify(v)); } catch {} },
   };
+  const DEFAULTS = { ...opts };
   Object.assign(opts, store.get() || {});
   opts.pdfPages = '';
+  const syncers = []; // put every control back in line with opts after a reset
   function bindSeg(id, key, cast, after) {
     const el = $(id);
     const sync = () => el.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(cast(b.dataset.v) === opts[key])));
+    syncers.push(sync);
     el.addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
       opts[key] = cast(b.dataset.v); sync(); store.set(opts); after && after();
@@ -792,6 +849,7 @@ button, select, summary, .drop { touch-action: manipulation; }
   }
   function bindNum(id, key) {
     $(id).value = opts[key] || '';
+    syncers.push(() => { $(id).value = opts[key] || ''; });
     $(id).addEventListener('input', e => { opts[key] = Math.max(0, parseInt(e.target.value, 10) || 0); store.set(opts); });
   }
   bindSeg('pagesize', 'page', String);
@@ -819,7 +877,22 @@ button, select, summary, .drop { touch-action: manipulation; }
     $('pt-pages-field').hidden = opts.ptool === 'merge';
   }
   ptoolUi();
-  bindSeg('bgq', 'bgq', String, () => { for (const k in bgBad) delete bgBad[k]; });
+  bindSeg('bgq', 'bgq', String, () => { for (const k in bgBad) delete bgBad[k]; bgqUi(); renderQueue(); });
+  const BGQ_HINT = {
+    none: 'Без нейросети: мгновенно и на любом устройстве, но хорошо вырезает только однотонный фон, например белый стол или зелёную стену.',
+    fast: 'Быстро: модель около 5 МБ скачивается один раз. Подходит для простых фото, но чаще ошибается на волосах и мелких деталях.',
+    hq: 'Точнее: модель около 42 МБ скачивается один раз. Лучше справляется с руками, волосами и мелкими деталями. Подходит для большинства фото.',
+    max: 'Максимум: модель около 90 МБ, на каждое фото уходит до минуты. Края и мелкие детали аккуратнее всего. Если модель не запустится, сайт сам вернётся к «Точнее».',
+  };
+  function bgqUi() { $('bgq-hint').textContent = BGQ_HINT[opts.bgq] || ''; }
+  bgqUi();
+  const MW_HINT = {
+    all: 'Удаляется всё: место, дата, камера, автор, программа и описание. Фото не пережимаются, качество не меняется. Поворот фото и цветовой профиль остаются, чтобы картинка выглядела как раньше.',
+    gps: 'Удаляется только место съёмки: координаты, город и страна. Дата и камера остаются, чтобы галерея сортировала фото как раньше. Работает для фото и видео.',
+  };
+  function mwhatUi() { $('mwhat-hint').textContent = MW_HINT[opts.mwhat] || ''; }
+  bindSeg('mwhat', 'mwhat', String, () => { mwhatUi(); setGoLabel(); resetDone(); renderQueue(); });
+  mwhatUi();
   $('pdf-pages').addEventListener('input', e => { opts.pdfPages = e.target.value; });
   $('pdf-join').checked = opts.pdfJoin;
   $('pdf-join').addEventListener('change', e => { opts.pdfJoin = e.target.checked; store.set(opts); });
@@ -832,6 +905,21 @@ button, select, summary, .drop { touch-action: manipulation; }
   $('merge').addEventListener('change', e => { opts.merge = e.target.checked; store.set(opts); });
   $('mute').checked = opts.mute;
   $('mute').addEventListener('change', e => { opts.mute = e.target.checked; store.set(opts); });
+  syncers.push(() => {
+    $('quality').value = Math.round(opts.quality * 100); $('quality-out').textContent = $('quality').value;
+    $('bg').value = opts.bg; $('merge').checked = opts.merge; $('mute').checked = opts.mute;
+    $('pdf-join').checked = opts.pdfJoin; $('pt-pages').value = opts.ptPages; $('pdf-pages').value = opts.pdfPages;
+  });
+  const settingsChanged = () => Object.keys(DEFAULTS).some(k => k !== 'mode' && k !== 'pdfPages' && opts[k] !== DEFAULTS[k]);
+  $('reset-settings').addEventListener('click', () => {
+    Object.assign(opts, DEFAULTS, { mode: opts.mode });
+    store.set(opts);
+    syncers.forEach(f => f());
+    ptoolUi(); levelHints(); bgqUi(); mwhatUi(); setGoLabel();
+    renderQueue();
+    toast('Настройки вернулись к исходным');
+  });
+  ['click', 'input', 'change'].forEach(ev => document.querySelector('.rail').addEventListener(ev, () => setTimeout(() => { $('reset-wrap').hidden = !settingsChanged(); }, 0)));
 
   const LEVELS = {
     light: { q: 0.82, max: 0, colors: 256, bpp: 0.08, share: 0.7, vres: 0, kbps: 192, hint: 'Почти без потери качества. Фото не уменьшаются в размерах.' },
@@ -849,7 +937,7 @@ button, select, summary, .drop { touch-action: manipulation; }
   const PT_GO = { merge: 'Объединить', split: 'Разделить', extract: 'Выбрать страницы', rotate: 'Повернуть' };
   function setGoLabel() {
     const m = opts.mode;
-    $('go-label').textContent = m === 'convert' ? 'Конвертировать' : m === 'compress' ? 'Сжать' : m === 'trim' ? 'Обрезать' : m === 'bg' ? 'Убрать фон' : PT_GO[opts.ptool] || 'Объединить';
+    $('go-label').textContent = m === 'convert' ? 'Конвертировать' : m === 'compress' ? 'Сжать' : m === 'trim' ? 'Обрезать' : m === 'bg' ? 'Убрать фон' : m === 'meta' ? (opts.mwhat === 'gps' ? 'Удалить место съёмки' : 'Удалить метаданные') : PT_GO[opts.ptool] || 'Объединить';
   }
   function resetDone() { items.forEach(it => { if (it.status === 'done' || it.status === 'error' || it.status === 'skip') { it.status = 'ready'; it.note = ''; } }); }
   function setMode(m) {
@@ -858,8 +946,10 @@ button, select, summary, .drop { touch-action: manipulation; }
     document.querySelectorAll('[data-for]').forEach(s => { s.hidden = s.dataset.for !== m; });
     setGoLabel();
     $('bulk-wrap').hidden = m !== 'convert';
-    $('drop-title').textContent = m === 'pdf' ? (COARSE ? 'Выберите PDF или картинки' : 'Перетащите PDF или картинки сюда') : m === 'bg' ? (COARSE ? 'Выберите фото' : 'Перетащите фото сюда') : m === 'trim' ? (COARSE ? 'Выберите аудио или видео' : 'Перетащите аудио или видео сюда') : COARSE ? 'Выберите файлы' : 'Перетащите файлы сюда';
-    $('drop-text').textContent = m === 'pdf'
+    $('drop-title').textContent = m === 'meta' ? (COARSE ? 'Выберите файлы' : 'Перетащите файлы сюда') : m === 'pdf' ? (COARSE ? 'Выберите PDF или картинки' : 'Перетащите PDF или картинки сюда') : m === 'bg' ? (COARSE ? 'Выберите фото' : 'Перетащите фото сюда') : m === 'trim' ? (COARSE ? 'Выберите аудио или видео' : 'Перетащите аудио или видео сюда') : COARSE ? 'Выберите файлы' : 'Перетащите файлы сюда';
+    $('drop-text').textContent = m === 'meta'
+      ? (COARSE ? 'Нажмите и выберите фото, видео, аудио или документы. Покажем, что в них спрятано.' : 'или нажмите, чтобы выбрать. Фото, видео, аудио, PDF, Word и Excel.')
+      : m === 'pdf'
       ? (COARSE ? 'Нажмите и выберите PDF. Картинки тоже можно: при объединении они станут страницами.' : 'или нажмите, чтобы выбрать. Картинки тоже можно: при объединении они станут страницами.')
       : m === 'bg'
       ? (COARSE ? 'Нажмите и выберите фото человека, предмета или животного. Результат будет PNG с прозрачным фоном.' : 'или нажмите, чтобы выбрать. Результат будет PNG с прозрачным фоном.')
@@ -872,6 +962,7 @@ button, select, summary, .drop { touch-action: manipulation; }
         : 'Фото, видео или аудио. Покажем, на сколько уменьшился каждый файл.');
     resetDone();
     if (m === 'trim') items.forEach(it => { if (it.kind === 'audio' || it.kind === 'video') { ownTarget(it); it.edit = true; loadWave(it); } });
+    if (m === 'meta') items.forEach(loadMeta);
     renderQueue();
   }
   document.querySelector('.modes').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (b && !busy) setMode(b.dataset.mode); });
@@ -894,6 +985,7 @@ button, select, summary, .drop { touch-action: manipulation; }
       if (opts.mode === 'trim' && (kind === 'audio' || kind === 'video')) { ownTarget(item); item.edit = true; loadWave(item); }
       if (COARSE && kind === 'video' && file.size > 300 * 1024 * 1024) toast('Большое видео: на телефоне может не хватить памяти. Для таких файлов лучше компьютер.');
       items.push(item);
+      if (opts.mode === 'meta') loadMeta(item);
     }
     renderQueue();
   }
@@ -947,10 +1039,10 @@ button, select, summary, .drop { touch-action: manipulation; }
 
   function renderQueue() {
     const q = $('queue');
-    const compress = opts.mode === 'compress', trimMode = opts.mode === 'trim', bgMode = opts.mode === 'bg', pdfMode = opts.mode === 'pdf';
+    const compress = opts.mode === 'compress', trimMode = opts.mode === 'trim', bgMode = opts.mode === 'bg', pdfMode = opts.mode === 'pdf', metaMode = opts.mode === 'meta';
     $('q-count').textContent = items.length ? files(items.length) : '';
     if (!items.length) {
-      q.innerHTML = `<li class="empty">${pdfMode ? 'Добавьте PDF, с которыми нужно что-то сделать.' : bgMode ? 'Добавьте фото, у которых нужно убрать фон.' : trimMode ? 'Добавьте аудио или видео, которое нужно обрезать.' : compress ? 'Добавьте фото, видео или аудио, которые нужно сделать легче.' : 'Добавьте файлы, и они появятся здесь.'}</li>`;
+      q.innerHTML = `<li class="empty">${metaMode ? 'Добавьте файлы, чтобы увидеть, что в них спрятано: место съёмки, дата, камера, автор.' : pdfMode ? 'Добавьте PDF, с которыми нужно что-то сделать.' : bgMode ? 'Добавьте фото, у которых нужно убрать фон.' : trimMode ? 'Добавьте аудио или видео, которое нужно обрезать.' : compress ? 'Добавьте фото, видео или аудио, которые нужно сделать легче.' : 'Добавьте файлы, и они появятся здесь.'}</li>`;
     } else {
       q.innerHTML = items.map(it => {
         const fam = FAMILY[it.kind] || 'other';
@@ -960,7 +1052,12 @@ button, select, summary, .drop { touch-action: manipulation; }
         const tr = activeTrim(it);
         const trimBtn = (!trimMode && (it.kind === 'audio' || it.kind === 'video'))
           ? `<button class="icon-btn${it.edit ? ' active' : ''}" type="button" data-trim="${it.id}" title="Обрезать" aria-label="Обрезать ${esc(it.file.name)}" aria-pressed="${!!it.edit}"${busy ? ' disabled' : ''}>${SCISSORS}</button>` : '';
-        if (!it.kind) status = '<span class="status-err">Этот формат пока не поддерживается</span>';
+        if (metaMode) {
+          if (metaOk(it)) right = `<div class="to"><button class="btn minfo${it.metaOpen ? ' active' : ''}" type="button" data-minfo="${it.id}" aria-pressed="${!!it.metaOpen}">${INFO_ICON}<span>Что внутри</span></button></div>`;
+          if (!metaOk(it)) status = `<span class="status-warn">${NO_META.has(it.ext) ? 'В этом формате нет скрытых метаданных' : 'Этот формат пока не поддерживается'}</span>`;
+          else if (it.status === 'ready') status = metaSummary(it);
+        }
+        else if (!it.kind) status = '<span class="status-err">Этот формат пока не поддерживается</span>';
         else if (trimMode && it.kind !== 'audio' && it.kind !== 'video') status = '<span class="status-warn">В этой вкладке только аудио и видео</span>';
         else if (bgMode && !bgOk(it)) status = '<span class="status-warn">В этой вкладке только фото</span>';
         else if (bgMode) right = `<div class="to"><span class="squeeze">убрать фон, сохранить в</span>${chip('png', 'image')}</div>`;
@@ -985,18 +1082,18 @@ button, select, summary, .drop { touch-action: manipulation; }
             <span class="sub">${chip(it.ext || '?', fam)}<span class="num">${fmtSize(it.file.size)}</span>${it.pages ? `<span class="num">${it.pages} стр.</span>` : ''}${tr ? `<span class="tag-trim">✂ ${fmtT(tr.start)}–${fmtT(tr.end == null ? it.dur : tr.end)}</span>` : ''}<span data-status="${it.id}">${status}</span></span></div>
           ${right}
           <button class="icon-btn" type="button" data-remove="${it.id}" aria-label="Убрать ${esc(it.file.name)}"${busy ? ' disabled' : ''}><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
-        </li>${it.edit ? trimEditor(it) : ''}`;
+        </li>${it.edit && (trimMode || compress || opts.mode === 'convert') ? trimEditor(it) : ''}${metaMode && metaOk(it) && it.metaOpen ? metaPanel(it) : ''}`;
       }).join('');
     }
     const union = [...new Set(items.flatMap(it => it.kind ? targetsFor(it.ext, it.kind) : []))].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
     $('bulk').innerHTML = '<option value="">—</option>' + union.map(t => `<option value="${t}">${LABEL[t]}</option>`).join('');
-    const workable = pdfMode ? items.some(pdfOk) : bgMode ? items.some(bgOk) : trimMode ? items.some(it => it.kind === 'audio' || it.kind === 'video') : compress ? items.some(it => !compressPlan(it).no) : items.some(it => it.kind);
+    const workable = metaMode ? items.some(metaOk) : pdfMode ? items.some(pdfOk) : bgMode ? items.some(bgOk) : trimMode ? items.some(it => it.kind === 'audio' || it.kind === 'video') : compress ? items.some(it => !compressPlan(it).no) : items.some(it => it.kind);
     $('go').disabled = !workable || busy;
     $('go').hidden = busy; $('stop').hidden = !busy;
     $('clear').disabled = busy;
     const cats = new Set(items.filter(it => it.kind).map(it => catOf(it.kind)));
     renderTips(cats); applyRelevance(cats); updatePdfHint(); updateRunNote(); updateEstimate();
-    items.filter(it => it.edit).forEach(it => drawWave(it));
+    items.filter(it => it.edit && (trimMode || compress || opts.mode === 'convert')).forEach(it => drawWave(it));
   }
 
   $('queue').addEventListener('change', e => {
@@ -1037,16 +1134,16 @@ button, select, summary, .drop { touch-action: manipulation; }
   const TIPS = {
     convert: {
       image: { title: 'Фото и картинки', items: [
-        'HEIC с iPhone лучше перевести в JPG: он откроется везде.',
-        'PNG хранит прозрачность, у JPG её нет: пустые места зальются цветом из настроек.',
+        ['HEIC с iPhone лучше перевести в JPG: он откроется везде.', () => items.some(i => /^hei[cf]$/.test(i.ext))],
+        ['PNG хранит прозрачность, у JPG её нет: пустые места зальются цветом из настроек.', 'image:jpg,bmp,pdf'],
         'WEBP легче JPG примерно на треть, он подходит для сайтов.',
-        'Несколько картинок в PDF соберутся в один документ. Это можно выключить в настройках.',
-        'ICO нужен для значков сайта: картинка вписывается в квадрат до 256 px.',
+        ['Несколько картинок в PDF соберутся в один документ. Это можно выключить в настройках.', () => items.filter(i => i.kind === 'image' && i.target === 'pdf').length > 1],
+        ['ICO нужен для значков сайта: картинка вписывается в квадрат до 256 px.', 'image:ico'],
       ] },
       video: { title: 'Видео', items: [
         'MP4 откроется на любом устройстве. WEBM легче и хорошо работает на сайтах.',
         'Чтобы достать звук из видео, выберите MP3.',
-        'GIF делается из первых 30 секунд. Ширину и число кадров выбирайте справа.',
+        ['GIF делается из первых 30 секунд. Ширину и число кадров выбирайте в настройках.', 'video:gif'],
         'Значок с ножницами у файла обрежет начало и конец.',
       ] },
       audio: { title: 'Аудио', items: [
@@ -1055,20 +1152,20 @@ button, select, summary, .drop { touch-action: manipulation; }
         'Чтобы только обрезать, оставьте тот же формат: он появится в списке после обрезки.',
       ] },
       pdf: { title: 'PDF', items: [
-        'Каждая страница станет отдельной картинкой.',
-        'Если страниц много, оставьте «Авто»: больше 10 картинок упакуются в один ZIP. Или склейте страницы в длинные картинки.',
+        ['Каждая страница станет отдельной картинкой.', 'pdf:png,jpg'],
+        ['Если страниц много, оставьте «Авто»: больше 10 картинок упакуются в один ZIP. Или склейте страницы в длинные картинки.', 'pdf:png,jpg'],
         'Нужна часть документа: впишите страницы, например 1-5, 8, 11-.',
-        'Для больших PDF берите JPG и 96–150 dpi: это быстрее и легче для памяти.',
-        'TXT достаёт текст. Сканы без текстового слоя переводите в картинки.',
+        ['Для больших PDF берите JPG и 96–150 dpi: это быстрее и легче для памяти.', 'pdf:png,jpg'],
+        ['TXT достаёт текст. Сканы без текстового слоя переводите в картинки.', 'pdf:txt'],
       ] },
       table: { title: 'Таблицы и данные', items: [
-        'Русский Excel открывает CSV с точкой с запятой, это настройка по умолчанию. Для программ и сайтов чаще нужна запятая.',
-        'Если в книге несколько листов, CSV получится по файлу на каждый лист.',
-        'JSON со списком объектов превращается в таблицу.',
+        ['Русский Excel открывает CSV с точкой с запятой, это настройка по умолчанию. Для программ и сайтов чаще нужна запятая.', 'table:csv'],
+        ['Если в книге несколько листов, CSV получится по файлу на каждый лист.', 'table:csv'],
+        ['JSON со списком объектов превращается в таблицу.', () => items.some(i => i.kind === 'json')],
       ] },
       doc: { title: 'Документы и текст', items: [
         'Word получается из Markdown, HTML и TXT: заголовки, списки, таблицы и ссылки сохраняются.',
-        'В PDF страницы A4 сохраняются как картинки: вёрстка точная, но текст не выделяется.',
+        ['В PDF страницы A4 сохраняются как картинки: вёрстка точная, но текст не выделяется.', 'doc:pdf'],
         'DOCX в HTML или Markdown удобно, чтобы вставить текст на сайт.',
       ] },
     },
@@ -1089,7 +1186,8 @@ button, select, summary, .drop { touch-action: manipulation; }
       image: { title: 'Фото и картинки', items: [
         'Лучше всего работают фото, где главный предмет чётко виден: человек, животное, вещь на столе.',
         'Результат сохраняется в PNG: только он умеет хранить прозрачность. JPG прозрачность теряет.',
-        'Мелкие детали вроде волос и шерсти могут получиться неидеально. Это ограничение лёгкой модели, которая работает прямо в браузере.',
+        ['Мелкие детали вроде волос и шерсти у этой модели получаются хуже. Для таких фото выберите «Точнее» или «Максимум».', () => opts.bgq === 'fast' || opts.bgq === 'none'],
+        ['Если фон однотонный, режим «Без нейросети» справится мгновенно и без скачивания модели.', () => opts.bgq !== 'none'],
         'Чтобы залить фон цветом, откройте PNG в любом редакторе или переведите его в JPG на вкладке «Конвертировать»: фон возьмётся из настроек.',
       ] },
     },
@@ -1130,7 +1228,39 @@ button, select, summary, .drop { touch-action: manipulation; }
       table: { title: 'Таблицы и данные', items: ['Таблицы не сжимаются: они и так лёгкие.'] },
       doc: { title: 'Документы и текст', items: ['Документы не сжимаются: они и так лёгкие.'] },
     },
+    meta: {
+      image: { title: 'Фото и картинки', items: [
+        'Фото с телефона обычно хранят место съёмки с точностью до нескольких метров, дату и модель телефона.',
+        'Перед публикацией в интернете или отправкой незнакомым людям такие данные лучше удалить.',
+        'Фото не пережимаются: качество и размер в пикселях остаются прежними.',
+        ['HEIC с iPhone сохранится в JPG: переписать сам HEIC браузер не умеет.', () => items.some(i => /^hei[cf]$/.test(i.ext))],
+        'Мессенджеры часто удаляют метаданные сами, но если отправить фото «файлом», они сохраняются.',
+      ] },
+      video: { title: 'Видео', items: [
+        'Видео с телефона хранят дату записи, модель телефона и часто место съёмки.',
+        'Видео не перекодируется: данные затираются прямо в файле, поэтому всё быстро и без потери качества.',
+      ] },
+      audio: { title: 'Аудио', items: [
+        'В аудио хранятся название, исполнитель, альбом, обложка и программа, в которой сделан файл.',
+        'Звук не перекодируется, качество остаётся прежним.',
+      ] },
+      pdf: { title: 'PDF', items: [
+        'В PDF хранятся автор, название, программа и даты создания и изменения.',
+        'Страницы и текст не меняются, удаляются только сведения о документе.',
+        'PDF с паролем сначала нужно открыть и пересохранить без пароля.',
+      ] },
+      doc: { title: 'Документы Word', items: [
+        ['В Word хранятся автор, кто изменял последним, организация, время правки и даты.', () => items.some(i => i.ext === 'docx')],
+        ['Текст не меняется. Имена в примечаниях и режиме правок остаются: их убирают в самом Word, в разделе «Проверить документ».', () => items.some(i => i.ext === 'docx')],
+      ] },
+      table: { title: 'Таблицы Excel', items: [
+        ['В Excel хранятся автор, кто изменял последним, организация и даты.', () => items.some(i => i.ext === 'xlsx')],
+        ['Сами данные и формулы не меняются.', () => items.some(i => i.ext === 'xlsx')],
+      ] },
+    },
   };
+  const tipOn = x => typeof x === 'string' || (typeof x[1] === 'function' ? x[1]() : x[1].split(' ').some(needed));
+  const tipText = x => typeof x === 'string' ? x : x[0];
   function catOf(kind) {
     return ({ image: 'image', video: 'video', audio: 'audio', pdf: 'pdf', sheet: 'table', json: 'table', md: 'doc', html: 'doc', docx: 'doc', txt: 'doc' })[kind] || null;
   }
@@ -1138,15 +1268,16 @@ button, select, summary, .drop { touch-action: manipulation; }
   let tipsKey = '';
   function tipHtml(c, open) {
     const t = TIPS[opts.mode][c];
-    return `<details class="tip" data-cat="${c}"${open ? ' open' : ''}><summary><span class="dot" style="background:var(--fam-${c})"></span>${t.title}</summary><ul>${t.items.map(x => `<li>${x}</li>`).join('')}</ul></details>`;
+    return `<details class="tip" data-cat="${c}"${open ? ' open' : ''}><summary><span class="dot" style="background:var(--fam-${c})"></span>${t.title}</summary><ul>${t.items.filter(tipOn).map(x => `<li>${tipText(x)}</li>`).join('')}</ul></details>`;
   }
   function renderTips(cats) {
-    const key = opts.mode + '|' + opts.ptool + '|' + items.length + '|' + [...cats].sort().join();
-    if (key === tipsKey) return;
-    tipsKey = key;
-    const present = CAT_ORDER.filter(c => cats.has(c) && TIPS[opts.mode][c] && !(opts.mode === 'pdf' && c === 'image' && opts.ptool !== 'merge'));
-    $('tips').innerHTML = present.length ? present.map(c => tipHtml(c, tipState.has(c) ? tipState.get(c) : true)).join('')
+    const present = CAT_ORDER.filter(c => cats.has(c) && TIPS[opts.mode][c] && TIPS[opts.mode][c].items.some(tipOn) && !(opts.mode === 'pdf' && c === 'image' && opts.ptool !== 'merge'));
+    const html = present.length ? present.map(c => tipHtml(c, tipState.has(c) ? tipState.get(c) : true)).join('')
       : `<p class="hint">${items.length ? 'Для этих файлов здесь подсказок нет.' : 'Добавьте файлы, и здесь появятся подсказки и настройки именно для них.'}</p>`;
+    // Rebuilt only when something changed, so an open or closed tip stays as the user left it
+    if (html === tipsKey) return;
+    tipsKey = html;
+    $('tips').innerHTML = html;
   }
   $('tips').addEventListener('toggle', e => { const d = e.target.closest('details[data-cat]'); if (d) tipState.set(d.dataset.cat, d.open); }, true);
 
@@ -1165,7 +1296,9 @@ button, select, summary, .drop { touch-action: manipulation; }
       const box = el.closest('[data-for]');
       if (hide && box && box.dataset.for === opts.mode) hiddenAny = true;
     });
+    $('merge-row').hidden = !showAllSettings && items.filter(it => it.kind === 'image' && it.target === 'pdf').length < 2;
     $('more-wrap').hidden = !hiddenAny && !showAllSettings;
+    $('reset-wrap').hidden = !settingsChanged();
     $('more-settings').textContent = showAllSettings ? 'Скрыть лишние настройки' : 'Показать все настройки';
   }
   $('more-settings').addEventListener('click', () => { showAllSettings = !showAllSettings; renderQueue(); });
@@ -2423,6 +2556,437 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     }
   }
 
+  // ---------- Metadata: what a file says about itself, and a copy without it ----------
+  const META_EXT = new Set(['jpg', 'jpeg', 'jfif', 'png', 'webp', 'gif', 'svg', 'heic', 'heif', 'avif', 'tif', 'tiff', 'bmp', 'ico', 'pdf', 'mp3', 'aac', 'wav', 'flac', 'ogg', 'oga', 'opus', 'm4a', 'weba', 'mp4', 'm4v', 'mov', '3gp', 'webm', 'mkv', 'docx', 'xlsx', 'pptx']);
+  const NO_META = new Set(['txt', 'log', 'csv', 'tsv', 'json', 'md', 'markdown', 'html', 'htm', 'bmp', 'ico']);
+  const metaOk = it => META_EXT.has(it.ext);
+  const OFFICE = ['docx', 'xlsx', 'pptx'];
+  const TR = s => (window.I18N ? window.I18N.tr(s) : s); // words inside values, which the page translator skips
+  const curLang = () => (window.I18N ? window.I18N.lang : 'ru');
+  const FOUND = { place: 'место съёмки', date: 'дата и время', device: 'камера или телефон', author: 'автор и описание', soft: 'программа' };
+  const GROUPS = ['Где снято', 'Когда', 'Устройство', 'Параметры съёмки', 'Автор и описание', 'Документ', 'Файл'];
+  function addRow(R, group, label, value, cat) {
+    if (value == null || value === '' || (typeof value === 'string' && !value.replace(/[\s\0]/g, ''))) return;
+    if (value instanceof Date && (isNaN(value) || value.getFullYear() < 1971)) return;
+    if (typeof value === 'string') value = value.replace(/\0+$/, '').trim().slice(0, 400);
+    (R.groups[group] = R.groups[group] || []).push([label, value]);
+    if (cat) R.found.add(cat);
+  }
+  function fmtDate(d, off) {
+    try {
+      const s = new Intl.DateTimeFormat(curLang(), { dateStyle: 'long', timeStyle: 'short' }).format(d);
+      return off ? `${s} (UTC${off})` : s;
+    } catch { return String(d); }
+  }
+  const dateVal = (d, off) => (d instanceof Date ? Object.assign(() => fmtDate(d, off), { d }) : d);
+  function countryName(c) {
+    let n = c.name;
+    try { if (c.code) n = new Intl.DisplayNames([curLang()], { type: 'region' }).of(c.code) || n; } catch {}
+    return c.near ? `${n} (${TR('у берега или рядом с границей')})` : n;
+  }
+  function setGps(R, lat, lon) {
+    if (!isFinite(lat) || !isFinite(lon) || (Math.abs(lat) < 1e-7 && Math.abs(lon) < 1e-7) || Math.abs(lat) > 90 || Math.abs(lon) > 180 || R.gps) return;
+    R.gps = { lat, lon };
+    addRow(R, 'Где снято', 'Страна', () => R.country === undefined ? TR('определяю…') : R.country ? countryName(R.country) : TR('не удалось определить'), 'place');
+    addRow(R, 'Где снято', 'Координаты', { text: `${lat.toFixed(6)}, ${lon.toFixed(6)}`, link: `https://www.openstreetmap.org/?mlat=${lat.toFixed(6)}&mlon=${lon.toFixed(6)}#map=15/${lat.toFixed(5)}/${lon.toFixed(5)}` }, 'place');
+  }
+  function decodeXml(s) {
+    return String(s).replace(/&#x([0-9a-f]+);/gi, (m, h) => String.fromCodePoint(parseInt(h, 16))).replace(/&#(\d+);/g, (m, d) => String.fromCodePoint(+d))
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
+  }
+  function xmlGet(s, name) {
+    let m = new RegExp('\\s' + name + '="([^"]*)"').exec(s);
+    if (m) return decodeXml(m[1]).trim();
+    m = new RegExp('<' + name + '\\b[^>]*>([\\s\\S]*?)</' + name + '>').exec(s);
+    return m ? decodeXml(m[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')).trim() : '';
+  }
+  // XMP is text: a few fields people care about, picked out by name
+  function readXmp(R, s) {
+    if (!s) return;
+    const x = n => xmlGet(s, n);
+    addRow(R, 'Автор и описание', 'Автор', x('dc:creator'), 'author');
+    addRow(R, 'Автор и описание', 'Права', x('dc:rights'), 'author');
+    addRow(R, 'Автор и описание', 'Название', x('dc:title'), 'author');
+    addRow(R, 'Автор и описание', 'Описание', x('dc:description'), 'author');
+    addRow(R, 'Где снято', 'Город', x('photoshop:City'), 'place');
+    addRow(R, 'Где снято', 'Регион', x('photoshop:State'), 'place');
+    addRow(R, 'Где снято', 'Страна в описании', x('photoshop:Country'), 'place');
+    addRow(R, 'Где снято', 'Место', x('Iptc4xmpCore:Location'), 'place');
+    addRow(R, 'Устройство', 'Программа', x('xmp:CreatorTool'), 'soft');
+    if (!R.groups['Когда']) { const d = x('xmp:CreateDate') || x('photoshop:DateCreated'); if (d) addRow(R, 'Когда', 'Создано', dateVal(new Date(d)), 'date'); }
+    // "43,28.0469N" is how XMP writes coordinates
+    const deg = v => { const m = /^(\d+),(\d+(?:\.\d+)?)([NSEW])$/.exec(v); return m ? (+m[1] + m[2] / 60) * (/[SW]/.test(m[3]) ? -1 : 1) : NaN; };
+    const la = deg(x('exif:GPSLatitude')), lo = deg(x('exif:GPSLongitude'));
+    if (isFinite(la) && isFinite(lo)) setGps(R, la, lo);
+  }
+  const rawVal = v => v instanceof Date ? (isNaN(v) ? '' : v.toISOString().replace('T', ' ').replace(/\.000Z$|Z$/, ''))
+    : v instanceof Uint8Array || ArrayBuffer.isView(v) ? (v.length <= 8 ? Array.from(v).join(' ') : `[${v.length} B]`)
+    : Array.isArray(v) ? v.map(rawVal).join(', ') : v && typeof v === 'object' ? JSON.stringify(v) : String(v);
+  function pushRaw(R, k, v) {
+    if (v == null || R.raw.length >= 300) return;
+    const s = rawVal(v);
+    if (s !== '' && s.length < 600) R.raw.push([k, s]);
+  }
+  // EXIF comments start with 8 bytes naming the text encoding, and are often just padding
+  function userComment(v) {
+    if (typeof v === 'string') return v;
+    if (!v || typeof v.length !== 'number' || v.length < 9) return '';
+    const a = Uint8Array.from(v), head = String.fromCharCode(...a.subarray(0, 5));
+    const body = a.subarray(8);
+    const s = head === 'UNICO' ? new TextDecoder(body[0] === 0 ? 'utf-16be' : 'utf-16le').decode(body) : new TextDecoder().decode(body);
+    return s.replace(/[\0\s]+/g, ' ').trim();
+  }
+  const EXIFR_OPTS = { tiff: true, ifd0: true, exif: true, gps: true, iptc: true, icc: true, ihdr: true, xmp: false, jfif: false, interop: false, ifd1: false, makerNote: false, userComment: true, mergeOutput: false, translateValues: false, reviveValues: true, sanitize: true };
+  async function readImageMeta(file, ext, k, R) {
+    const b = new Uint8Array(await file.arrayBuffer());
+    let exifSrc = b.buffer, xmp = '';
+    const F = window.FMeta;
+    try {
+      if (k === 'jpeg') {
+        const j = F.readJpeg(b); xmp = j.xmp;
+        j.comments.forEach(c => addRow(R, 'Автор и описание', 'Комментарий', c, 'author'));
+        if (j.trailer) addRow(R, 'Файл', 'Скрытые данные после картинки', fmtSize(j.trailer));
+      } else if (k === 'png') {
+        const p = F.readPng(b); xmp = p.xmp;
+        const PNG_LABEL = { Author: 'Автор', Artist: 'Автор', Copyright: 'Права', Title: 'Название', Description: 'Описание', Comment: 'Комментарий', Software: 'Программа', Source: 'Устройство', 'Creation Time': 'Создано' };
+        p.text.forEach(([key, v]) => {
+          const label = PNG_LABEL[key];
+          if (label === 'Программа') addRow(R, 'Устройство', label, v, 'soft');
+          else if (label === 'Устройство') addRow(R, 'Устройство', label, v, 'device');
+          else if (label === 'Создано') addRow(R, 'Когда', label, v, 'date');
+          else addRow(R, 'Автор и описание', label || key, v, 'author');
+          pushRaw(R, 'PNG ' + key, v);
+        });
+        if (p.time) addRow(R, 'Когда', 'Изменено', dateVal(p.time), 'date');
+        if (!p.exif) exifSrc = null;
+        else exifSrc = p.exif.buffer.slice(p.exif.byteOffset, p.exif.byteOffset + p.exif.length);
+      } else if (k === 'webp') {
+        const w = F.readWebp(b); xmp = w.xmp;
+        exifSrc = w.exif ? w.exif.buffer.slice(w.exif.byteOffset, w.exif.byteOffset + w.exif.length) : null;
+      } else if (k === 'gif') {
+        const g = F.readGif(b);
+        g.comments.forEach(c => addRow(R, 'Автор и описание', 'Комментарий', c, 'author'));
+        g.apps.forEach(a => pushRaw(R, 'GIF block', a));
+        if (g.apps.some(a => /XMP/.test(a))) addRow(R, 'Автор и описание', 'Блок XMP', TR('есть'), 'author');
+        if (g.frames > 1) addRow(R, 'Файл', 'Кадров', String(g.frames));
+        exifSrc = null;
+      } else if (ext === 'svg') {
+        const s = F.readSvg(await file.text());
+        const SVG_LABEL = { title: ['Название', 'author'], author: ['Автор', 'author'], rights: ['Права', 'author'], date: ['Создано', 'date'], description: ['Описание', 'author'], docname: ['Имя исходного файла', 'author'], exportPath: ['Путь на компьютере', 'author'], inkscape: ['Программа', 'soft'], generator: ['Программа', 'soft'] };
+        s.fields.forEach(([key, v]) => { const [label, cat] = SVG_LABEL[key]; addRow(R, cat === 'soft' ? 'Устройство' : cat === 'date' ? 'Когда' : 'Автор и описание', label, v, cat); });
+        if (s.comments) addRow(R, 'Файл', 'Комментарии в коде', String(s.comments));
+        exifSrc = null;
+      } else if (['bmp', 'ico'].includes(ext)) exifSrc = null;
+    } catch (e) { console.warn(e); }
+    let ex = null;
+    if (exifSrc) {
+      try { await need('exifr'); ex = await window.exifr.parse(exifSrc, EXIFR_OPTS); } catch (e) { console.warn(e); ex = null; }
+    }
+    if (ex) {
+      const I = ex.ifd0 || {}, E = ex.exif || {}, G = ex.gps || {}, P = ex.iptc || {}, C = ex.icc || {};
+      if (G.latitude != null) setGps(R, G.latitude, G.longitude);
+      if (typeof G.GPSAltitude === 'number' && R.gps) { const alt = Math.round(G.GPSAltitude * (G.GPSAltitudeRef && G.GPSAltitudeRef[0] === 1 ? -1 : 1)); addRow(R, 'Где снято', 'Высота', () => `${alt} ${TR('м')}`, 'place'); }
+      if (typeof G.GPSImgDirection === 'number' && R.gps) addRow(R, 'Где снято', 'Направление камеры', `${Math.round(G.GPSImgDirection)}°`, 'place');
+      addRow(R, 'Когда', 'Снято', dateVal(E.DateTimeOriginal, E.OffsetTimeOriginal), 'date');
+      if (E.CreateDate && (!E.DateTimeOriginal || +E.CreateDate !== +E.DateTimeOriginal)) addRow(R, 'Когда', 'Оцифровано', dateVal(E.CreateDate, E.OffsetTimeDigitized), 'date');
+      if (I.ModifyDate && (!E.DateTimeOriginal || +I.ModifyDate !== +E.DateTimeOriginal)) addRow(R, 'Когда', 'Изменено', dateVal(I.ModifyDate, E.OffsetTime), 'date');
+      const make = String(I.Make || '').trim(), model = String(I.Model || '').trim();
+      addRow(R, 'Устройство', 'Камера или телефон', model.toLowerCase().startsWith(make.toLowerCase()) ? model : [make, model].filter(Boolean).join(' '), 'device');
+      addRow(R, 'Устройство', 'Объектив', [E.LensMake, E.LensModel].filter(Boolean).join(' '), 'device');
+      addRow(R, 'Устройство', 'Серийный номер', E.BodySerialNumber || E.SerialNumber || I.SerialNumber, 'device');
+      addRow(R, 'Устройство', 'Владелец камеры', E.CameraOwnerName, 'author');
+      addRow(R, 'Устройство', 'Компьютер', I.HostComputer, 'device');
+      addRow(R, 'Устройство', 'Программа', I.Software, 'soft');
+      if (typeof E.ExposureTime === 'number') { const v = E.ExposureTime; addRow(R, 'Параметры съёмки', 'Выдержка', () => `${v < 1 ? '1/' + Math.round(1 / v) : +v.toFixed(1)} ${TR('с')}`); }
+      if (typeof E.FNumber === 'number') addRow(R, 'Параметры съёмки', 'Диафрагма', `f/${+E.FNumber.toFixed(1)}`);
+      if (E.ISO) addRow(R, 'Параметры съёмки', 'ISO', String(E.ISO));
+      if (typeof E.FocalLength === 'number') { const f = +E.FocalLength.toFixed(1), f35 = E.FocalLengthIn35mmFormat; addRow(R, 'Параметры съёмки', 'Фокусное расстояние', () => `${f} ${TR('мм')}${f35 ? ` (${f35} ${TR('мм в пересчёте на 35 мм')})` : ''}`); }
+      if (typeof E.Flash === 'number') { const on = E.Flash & 1; addRow(R, 'Параметры съёмки', 'Вспышка', () => TR(on ? 'сработала' : 'не сработала')); }
+      addRow(R, 'Автор и описание', 'Автор', I.Artist || I.XPAuthor || P.Byline, 'author');
+      addRow(R, 'Автор и описание', 'Права', I.Copyright || P.CopyrightNotice, 'author');
+      addRow(R, 'Автор и описание', 'Название', I.XPTitle || P.ObjectName || P.Headline, 'author');
+      addRow(R, 'Автор и описание', 'Описание', I.ImageDescription || I.XPSubject || P.Caption, 'author');
+      addRow(R, 'Автор и описание', 'Комментарий', userComment(ex.userComment || E.UserComment) || I.XPComment, 'author');
+      addRow(R, 'Автор и описание', 'Ключевые слова', [].concat(I.XPKeywords || P.Keywords || []).join(', '), 'author');
+      addRow(R, 'Где снято', 'Город', P.City, 'place');
+      addRow(R, 'Где снято', 'Регион', P.State, 'place');
+      addRow(R, 'Где снято', 'Страна в описании', P.Country, 'place');
+      addRow(R, 'Файл', 'Цветовой профиль', C.ProfileDescription || C.Description);
+      for (const [block, data] of Object.entries(ex)) {
+        if (data && typeof data === 'object' && !(data instanceof Date) && !ArrayBuffer.isView(data)) { for (const [kk, v] of Object.entries(data)) if (v != null && kk !== 'latitude' && kk !== 'longitude') pushRaw(R, kk, v); }
+        else pushRaw(R, block, data);
+      }
+    }
+    readXmp(R, xmp);
+    if (xmp) pushRaw(R, 'XMP', `${xmp.length} B`);
+    // Pixel size, from the picture itself where the browser can open it
+    let w = 0, h = 0;
+    if (['jpeg', 'png', 'webp', 'gif'].includes(k) || ext === 'svg') {
+      try { const d = await imgFrom(file); w = d.w; h = d.h; d.done(); } catch {}
+    }
+    if (!w && ex) { const E = ex.exif || {}, I = ex.ihdr || {}; w = E.ExifImageWidth || I.ImageWidth || 0; h = E.ExifImageHeight || I.ImageHeight || 0; }
+    if (w && h && ext !== 'svg') R.groups['Файл'] = [['Размер', `${w} × ${h} px`], ...(R.groups['Файл'] || [])];
+  }
+  async function readPdfMeta(file, R) {
+    await need('pdflib');
+    const doc = await window.PDFLib.PDFDocument.load(await file.arrayBuffer(), { ignoreEncryption: true, updateMetadata: false });
+    const g = f => { try { return doc[f](); } catch { return undefined; } };
+    addRow(R, 'Документ', 'Название', g('getTitle'), 'author');
+    addRow(R, 'Документ', 'Автор', g('getAuthor'), 'author');
+    addRow(R, 'Документ', 'Тема', g('getSubject'), 'author');
+    addRow(R, 'Документ', 'Ключевые слова', g('getKeywords'), 'author');
+    addRow(R, 'Документ', 'Создан в программе', g('getCreator'), 'soft');
+    addRow(R, 'Документ', 'PDF сделан в', g('getProducer'), 'soft');
+    addRow(R, 'Когда', 'Создан', dateVal(g('getCreationDate')), 'date');
+    addRow(R, 'Когда', 'Изменён', dateVal(g('getModificationDate')), 'date');
+    if (doc.catalog.get(window.PDFLib.PDFName.of('Metadata'))) addRow(R, 'Документ', 'Блок XMP', () => TR('есть, с теми же сведениями'));
+    addRow(R, 'Файл', 'Страниц', String(doc.getPageCount()));
+    if (doc.isEncrypted) addRow(R, 'Файл', 'Защита', () => TR('защищён паролем'));
+    for (const [k, f] of [['Title', 'getTitle'], ['Author', 'getAuthor'], ['Subject', 'getSubject'], ['Keywords', 'getKeywords'], ['Creator', 'getCreator'], ['Producer', 'getProducer'], ['CreationDate', 'getCreationDate'], ['ModDate', 'getModificationDate']]) pushRaw(R, k, g(f));
+  }
+  async function readOfficeMeta(file, R) {
+    await need('jszip');
+    const zip = await window.JSZip.loadAsync(file);
+    const text = async p => { const f = zip.file(p); return f ? f.async('string') : ''; };
+    const core = await text('docProps/core.xml'), app = await text('docProps/app.xml'), custom = await text('docProps/custom.xml');
+    const c = n => xmlGet(core, n), a = n => xmlGet(app, n);
+    addRow(R, 'Документ', 'Название', c('dc:title'), 'author');
+    addRow(R, 'Документ', 'Тема', c('dc:subject'), 'author');
+    addRow(R, 'Документ', 'Автор', c('dc:creator'), 'author');
+    addRow(R, 'Документ', 'Последним изменял', c('cp:lastModifiedBy'), 'author');
+    addRow(R, 'Документ', 'Описание', c('dc:description'), 'author');
+    addRow(R, 'Документ', 'Ключевые слова', c('cp:keywords'), 'author');
+    addRow(R, 'Документ', 'Категория', c('cp:category'), 'author');
+    addRow(R, 'Документ', 'Организация', a('Company'), 'author');
+    addRow(R, 'Документ', 'Руководитель', a('Manager'), 'author');
+    addRow(R, 'Документ', 'Шаблон', a('Template'), 'soft');
+    addRow(R, 'Документ', 'Программа', [a('Application'), a('AppVersion')].filter(Boolean).join(' '), 'soft');
+    addRow(R, 'Когда', 'Создан', c('dcterms:created') ? dateVal(new Date(c('dcterms:created'))) : '', 'date');
+    addRow(R, 'Когда', 'Изменён', c('dcterms:modified') ? dateVal(new Date(c('dcterms:modified'))) : '', 'date');
+    addRow(R, 'Когда', 'Последняя печать', c('cp:lastPrinted') ? dateVal(new Date(c('cp:lastPrinted'))) : '', 'date');
+    const mins = +a('TotalTime');
+    if (mins > 0) addRow(R, 'Когда', 'Время правки', () => `${mins} ${TR('мин')}`, 'date');
+    addRow(R, 'Файл', 'Номер правки', c('cp:revision'));
+    addRow(R, 'Файл', 'Страниц', a('Pages'));
+    addRow(R, 'Файл', 'Слайдов', a('Slides'));
+    addRow(R, 'Файл', 'Слов', a('Words'));
+    const props = (custom.match(/<property\b/g) || []).length;
+    if (props) addRow(R, 'Документ', 'Дополнительные свойства', String(props), 'author');
+    for (const m of (core + app).matchAll(/<((?:dc|cp|dcterms):)?(\w+)\b[^>/]*>([^<]{1,300})<\/\1?\2>/g)) pushRaw(R, m[2], decodeXml(m[3]));
+  }
+  const CODEC = { avc: 'H.264', hevc: 'H.265 (HEVC)', vp8: 'VP8', vp9: 'VP9', av1: 'AV1', aac: 'AAC', opus: 'Opus', mp3: 'MP3', vorbis: 'Vorbis', flac: 'FLAC', ac3: 'AC-3', eac3: 'E-AC-3' };
+  const codecName = c => CODEC[c] || (/^pcm/.test(c || '') ? 'PCM' : String(c || '?').toUpperCase());
+  function iso6709(s) { const m = /^([+-]\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)/.exec(String(s || '').trim()); return m ? [+m[1], +m[2]] : null; }
+  const MP4_TAGS = {
+    '\xa9nam': ['Автор и описание', 'Название', 'author'], '\xa9ART': ['Автор и описание', 'Исполнитель', 'author'], '\xa9alb': ['Автор и описание', 'Альбом', 'author'],
+    '\xa9wrt': ['Автор и описание', 'Автор музыки', 'author'], '\xa9cmt': ['Автор и описание', 'Комментарий', 'author'], '\xa9des': ['Автор и описание', 'Описание', 'author'],
+    '\xa9gen': ['Автор и описание', 'Жанр', ''], '\xa9day': ['Когда', 'Дата', 'date'], '\xa9too': ['Устройство', 'Программа', 'soft'], '\xa9swr': ['Устройство', 'Программа', 'soft'],
+    '\xa9mak': ['Устройство', 'Производитель', 'device'], '\xa9mod': ['Устройство', 'Модель устройства', 'device'], cprt: ['Автор и описание', 'Права', 'author'], covr: ['Автор и описание', 'Обложка', 'author'],
+    'com.apple.quicktime.make': ['Устройство', 'Производитель', 'device'], 'com.apple.quicktime.model': ['Устройство', 'Модель устройства', 'device'],
+    'com.apple.quicktime.software': ['Устройство', 'Программа', 'soft'], 'com.apple.quicktime.creationdate': ['Когда', 'Записано', 'date'],
+    'com.apple.quicktime.author': ['Автор и описание', 'Автор', 'author'], 'com.apple.quicktime.title': ['Автор и описание', 'Название', 'author'],
+    'com.apple.quicktime.description': ['Автор и описание', 'Описание', 'author'], 'com.apple.quicktime.location.name': ['Где снято', 'Место', 'place'],
+  };
+  const WAV_TAGS = { INAM: ['Название', 'author'], IART: ['Исполнитель', 'author'], IPRD: ['Альбом', 'author'], ICMT: ['Комментарий', 'author'], ICOP: ['Права', 'author'], ICRD: ['Дата', 'date'], ISFT: ['Программа', 'soft'], IENG: ['Автор', 'author'], IGNR: ['Жанр', ''] };
+  async function readMediaMeta(file, ext, k, R) {
+    const F = window.FMeta;
+    if (k === 'mp4') {
+      try {
+        const m = await F.readMp4(file);
+        addRow(R, 'Когда', 'Записано', dateVal(m.created), 'date');
+        if (m.modified && m.created && Math.abs(m.modified - m.created) > 60000) addRow(R, 'Когда', 'Изменено', dateVal(m.modified), 'date');
+        for (const [key, v] of m.tags) {
+          pushRaw(R, key.replace('com.apple.quicktime.', ''), v);
+          if (key === '\xa9xyz' || key === 'loci' || /location(\.ISO6709)?$/i.test(key)) { const p = iso6709(v); if (p) { setGps(R, p[0], p[1]); continue; } }
+          if (key === 'loci-name') { addRow(R, 'Где снято', 'Место', v, 'place'); continue; }
+          const t = MP4_TAGS[key];
+          if (!t) continue;
+          if (t[2] === 'date' && /^\d{4}-\d\d-\d\d/.test(v)) addRow(R, t[0], t[1], dateVal(new Date(v)), 'date');
+          else addRow(R, t[0], t[1], key === 'covr' ? () => TR('есть') : v, t[2]);
+        }
+        if (m.xmp) addRow(R, 'Автор и описание', 'Блок XMP', () => TR('есть'), 'author');
+      } catch (e) { console.warn(e); }
+    }
+    if (k === 'wav') {
+      try {
+        const w = await F.readWav(file);
+        for (const [id, v] of w.info) { pushRaw(R, id, v); const t = WAV_TAGS[id]; addRow(R, t && t[1] === 'soft' ? 'Устройство' : t && t[1] === 'date' ? 'Когда' : 'Автор и описание', t ? t[0] : id, v, t ? t[1] : 'author'); }
+        w.chunks.forEach(c => addRow(R, 'Файл', 'Служебный блок', c, c === 'bext' || c === 'iXML' ? 'soft' : 'author'));
+      } catch (e) { console.warn(e); }
+    }
+    let input = null;
+    try {
+      const M = await media();
+      input = new M.Input({ source: new M.BlobSource(file), formats: M.ALL_FORMATS });
+      const dur = await input.computeDuration().catch(() => 0);
+      if (dur) addRow(R, 'Файл', 'Длительность', fmtT(dur).replace(/\.\d$/, ''));
+      const vt = await input.getPrimaryVideoTrack().catch(() => null);
+      if (vt) addRow(R, 'Файл', 'Видео', `${vt.displayWidth} × ${vt.displayHeight}, ${codecName(vt.codec)}`);
+      const at = await input.getPrimaryAudioTrack().catch(() => null);
+      if (at) { const ch = at.numberOfChannels; addRow(R, 'Файл', 'Звук', () => `${codecName(at.codec)}, ${+(at.sampleRate / 1000).toFixed(1)} ${TR('кГц')}, ${ch === 1 ? TR('моно') : ch === 2 ? TR('стерео') : ch + ' ' + TR('каналов')}`); }
+      if (k !== 'mp4' && !(k === 'wav' && R.groups['Автор и описание'])) {
+        const tags = await input.getMetadataTags().catch(() => ({}));
+        addRow(R, 'Автор и описание', 'Название', tags.title, 'author');
+        addRow(R, 'Автор и описание', 'Исполнитель', tags.artist, 'author');
+        addRow(R, 'Автор и описание', 'Альбом', tags.album, 'author');
+        addRow(R, 'Автор и описание', 'Исполнитель альбома', tags.albumArtist, 'author');
+        addRow(R, 'Автор и описание', 'Жанр', tags.genre);
+        addRow(R, 'Автор и описание', 'Комментарий', tags.comment, 'author');
+        addRow(R, 'Автор и описание', 'Описание', tags.description, 'author');
+        if (tags.images && tags.images.length) addRow(R, 'Автор и описание', 'Обложка', () => TR('есть'), 'author');
+        if (tags.date instanceof Date && !isNaN(tags.date)) addRow(R, 'Когда', 'Дата', String(tags.date.getUTCFullYear()) + (tags.date.getUTCMonth() || tags.date.getUTCDate() > 1 ? '-' + String(tags.date.getUTCMonth() + 1).padStart(2, '0') + '-' + String(tags.date.getUTCDate()).padStart(2, '0') : ''), 'date');
+        for (const [key, v] of Object.entries(tags.raw || {})) {
+          if (k === 'wav') break;
+          const val = typeof v === 'string' || typeof v === 'number' ? String(v) : v && v.text ? String(v.text) : v && v.data ? `[${v.data.length} B]` : v instanceof Uint8Array ? `[${v.length} B]` : null;
+          if (val == null) continue;
+          pushRaw(R, key, val);
+          if (/^(encoder|encoded_by|TSSE|TENC|ENCODER|ENCODED-BY|ISFT|WritingApp|MuxingApp)$/i.test(key) && !/mediabunny/i.test(val)) addRow(R, 'Устройство', 'Программа', val, 'soft');
+          if (/^(creation_time|DateUTC|TDRC|TYER|DATE)$/i.test(key) && !R.groups['Когда']) addRow(R, 'Когда', 'Дата', val, 'date');
+        }
+      }
+    } catch (e) { console.warn(e); }
+    finally { if (input && input.dispose) try { input.dispose(); } catch {} }
+  }
+  async function readMeta(file, ext) {
+    const R = { groups: {}, found: new Set(), raw: [], gps: null, country: undefined };
+    const k = await window.FMeta.sniff(file, ext);
+    if (KIND[ext] === 'image' || ['jpeg', 'png', 'webp', 'gif', 'heif'].includes(k)) await readImageMeta(file, ext, k, R);
+    else if (ext === 'pdf') await readPdfMeta(file, R);
+    else if (OFFICE.includes(ext)) await readOfficeMeta(file, R);
+    else await readMediaMeta(file, ext, k, R);
+    // Duplicates (the same value under the same label from two places) are shown once
+    for (const g in R.groups) { const seen = new Set(); R.groups[g] = R.groups[g].filter(([l, v]) => { const key = l + '|' + (typeof v === 'function' ? (v.d ? +v.d : Math.random()) : JSON.stringify(v)); if (seen.has(key)) return false; seen.add(key); return true; }); }
+    return R;
+  }
+  function loadMeta(it) {
+    if (it.meta || !metaOk(it)) return;
+    it.meta = 'loading';
+    if (it.metaOpen == null) it.metaOpen = items.filter(i => metaOk(i) && i.metaOpen).length < (COARSE ? 1 : 3);
+    readMeta(it.file, it.ext).then(R => {
+      it.meta = R;
+      if (R.gps) {
+        window.FMeta.countryAt(R.gps.lat, R.gps.lon).then(c => { R.country = c; }, () => { R.country = null; }).then(() => { if (!busy) renderQueue(); });
+      }
+    }, e => { console.error(e); it.meta = { error: /password|encrypt/i.test(String(e && e.message)) ? 'Файл защищён паролем.' : 'Не удалось прочитать метаданные: файл повреждён или в необычном формате.' }; })
+      .then(() => { if (!busy) renderQueue(); });
+  }
+  const INFO_ICON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6.3"/><path d="M8 7.2v4M8 4.9v.1"/></svg>';
+  function metaSummary(it) {
+    const R = it.meta;
+    if (!R || R === 'loading') return '<span class="status-work"><span class="spin"></span> читаю метаданные</span>';
+    if (R.error) return `<span class="status-err">${esc(R.error)}</span>`;
+    return R.found.size ? '<span class="status-warn">есть личные данные</span>' : '<span class="status-ok">личных данных нет</span>';
+  }
+  function metaDd(v) {
+    if (v && typeof v === 'object' && v.link) return `<dd><span class="mv">${esc(v.text)}</span><br><a href="${esc(v.link)}" target="_blank" rel="noopener noreferrer" title="OpenStreetMap">Открыть на карте</a></dd>`;
+    return `<dd class="mv">${esc(typeof v === 'function' ? v() : String(v))}</dd>`;
+  }
+  function metaPanel(it) {
+    const R = it.meta;
+    if (!R || R === 'loading') return '<li class="meta-li"><p class="hint"><span class="spin"></span> Читаю метаданные…</p></li>';
+    if (R.error) return `<li class="meta-li"><p class="hint status-err">${esc(R.error)}</p></li>`;
+    const found = Object.keys(FOUND).filter(c => R.found.has(c));
+    const sum = found.length
+      ? `<p class="meta-sum warn"><strong>Найдено:</strong> ${found.map(c => `<span>${FOUND[c]}</span>`).join(', ')}</p>`
+      : '<p class="meta-sum ok">Личных данных не найдено</p>';
+    const groups = GROUPS.filter(g => R.groups[g]).map(g => `<section class="mgroup${g === 'Где снято' ? ' place' : ''}"><h4>${g}</h4><dl>${R.groups[g].map(([l, v]) => `<dt>${esc(l)}</dt>${metaDd(v)}`).join('')}</dl></section>`).join('');
+    const raw = R.raw.length ? `<details class="mraw" data-mraw="${it.id}"${it.rawOpen ? ' open' : ''}><summary>Все поля <span class="mv">(${R.raw.length})</span></summary><dl>${R.raw.map(([k, v]) => `<dt class="mv">${esc(k)}</dt><dd class="mv">${esc(v)}</dd>`).join('')}</dl></details>` : '';
+    return `<li class="meta-li">${sum}${groups ? `<div class="mgrid">${groups}</div>` : ''}${raw}</li>`;
+  }
+  // Copies without metadata: pictures and media are rewritten without re-compression where the format allows it
+  const CORE_EMPTY = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"></cp:coreProperties>';
+  const CUSTOM_EMPTY = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"></Properties>';
+  async function cleanOffice(file) {
+    await need('jszip');
+    const zip = await window.JSZip.loadAsync(file);
+    if (zip.file('docProps/core.xml')) zip.file('docProps/core.xml', CORE_EMPTY);
+    if (zip.file('docProps/custom.xml')) zip.file('docProps/custom.xml', CUSTOM_EMPTY);
+    const app = zip.file('docProps/app.xml');
+    if (app) zip.file('docProps/app.xml', (await app.async('string')).replace(/<(Company|Manager|Template|HyperlinkBase)>[\s\S]*?<\/\1>/g, '<$1></$1>').replace(/<TotalTime>\d*<\/TotalTime>/, '<TotalTime>0</TotalTime>'));
+    // Dates inside the archive tell when each part was saved, so they all get one neutral date
+    const neutral = new Date(1980, 0, 1);
+    zip.forEach((p, f) => { f.date = neutral; });
+    return zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 }, mimeType: file.type || 'application/octet-stream' });
+  }
+  async function cleanPdf(file) {
+    await need('pdflib');
+    const L = window.PDFLib;
+    const doc = await L.PDFDocument.load(await file.arrayBuffer(), { updateMetadata: false });
+    const ctx = doc.context, drop = (dict, key) => { const v = dict.get(L.PDFName.of(key)); if (v instanceof L.PDFRef) ctx.delete(v); dict.delete(L.PDFName.of(key)); };
+    const info = ctx.trailerInfo.Info;
+    if (info instanceof L.PDFRef) ctx.delete(info);
+    ctx.trailerInfo.Info = undefined;
+    drop(doc.catalog, 'Metadata'); drop(doc.catalog, 'PieceInfo');
+    doc.getPages().forEach(p => { drop(p.node, 'Metadata'); drop(p.node, 'PieceInfo'); p.node.delete(L.PDFName.of('LastModified')); });
+    return new Blob([await doc.save()], { type: 'application/pdf' });
+  }
+  async function remuxClean(it) {
+    const M = await media();
+    const e = normExt(it.ext);
+    const format = e === 'mkv' ? new M.MkvOutputFormat() : e === 'ogg' ? new M.OggOutputFormat() : new M.WebMOutputFormat();
+    const input = new M.Input({ source: new M.BlobSource(it.file), formats: M.ALL_FORMATS });
+    try {
+      const output = new M.Output({ format, target: new M.BufferTarget() });
+      const conv = await M.Conversion.init({ input, output, tags: {}, showWarnings: false });
+      if (!conv.isValid) throw new Error('Не удалось пересобрать файл без метаданных: браузер не знает его кодек.');
+      conv.onProgress = p => setNote(it, `${Math.round(p * 100)}%`);
+      activeJob = conv;
+      try { await conv.execute(); } catch (err) { if (stopRequested) throw new Stopped(); throw err; } finally { activeJob = null; }
+      return new Blob([output.target.buffer], { type: output.format.mimeType });
+    } finally { if (input.dispose) try { input.dispose(); } catch {} }
+  }
+  async function cleanOne(it, gpsOnly) {
+    const base = baseOf(it.file.name) + WORD(gpsOnly ? '-без-места' : '-без-метаданных');
+    const ext = it.ext;
+    const blob = await window.FMeta.clean(it.file, ext, gpsOnly);
+    if (blob) return { name: `${base}.${ext}`, blob };
+    if (ext === 'pdf') return { name: `${base}.pdf`, blob: await cleanPdf(it.file) };
+    if (OFFICE.includes(ext)) return { name: `${base}.${ext}`, blob: await cleanOffice(it.file) };
+    if (it.kind === 'image') {
+      // HEIC, AVIF and TIFF are drawn again: the browser can't rewrite them piece by piece
+      const out = ['heic', 'heif'].includes(ext) ? 'jpg' : 'png';
+      const d = await decodeImage(it.file, ext);
+      try { return { name: `${base}.${out}`, blob: await encodeCanvas(drawImage(d, out === 'jpg', 0), out, 0.92), redrawn: out }; } finally { d.done(); }
+    }
+    if (['webm', 'mkv', 'ogg', 'oga', 'opus', 'weba'].includes(ext)) return { name: `${base}.${ext}`, blob: await remuxClean(it) };
+    throw new Error('Этот формат пока не поддерживается');
+  }
+  async function runMeta(todo) {
+    const gpsOnly = opts.mwhat === 'gps';
+    for (const it of todo) {
+      if (stopRequested) { it.status = 'error'; it.note = 'Остановлено'; continue; }
+      if (gpsOnly && it.kind !== 'image' && it.kind !== 'video') { it.status = 'skip'; it.note = 'Место съёмки бывает только у фото и видео'; continue; }
+      it.status = 'working'; it.note = ''; renderQueue();
+      await tick();
+      try {
+        if (!it.meta || it.meta === 'loading') it.meta = await raceStop(readMeta(it.file, it.ext)).catch(e => { if (e instanceof Stopped) throw e; return null; });
+        if (gpsOnly && it.meta && it.meta.found && !it.meta.found.has('place')) { it.status = 'skip'; it.note = 'Места съёмки в файле нет, сохранять нечего'; renderQueue(); continue; }
+        const out = await raceStop(cleanOne(it, gpsOnly));
+        addResult(out, undefined, true);
+        renderResults();
+        // The copy is read back the same way, so the note says what is really left in it
+        const after = await raceStop(readMeta(new File([out.blob], out.name), extOf(out.name))).catch(e => { if (e instanceof Stopped) throw e; return null; });
+        const left = after ? [...after.found].filter(c => gpsOnly ? c === 'place' : c !== 'soft') : [];
+        it.status = left.length ? 'skip' : 'done';
+        it.note = left.length ? 'осталось: ' + left.map(c => FOUND[c]).join(', ')
+          : out.redrawn === 'jpg' ? 'сохранено в JPG без метаданных' : out.redrawn ? 'сохранено в PNG без метаданных'
+          : gpsOnly ? 'место съёмки удалено' : it.meta && !it.meta.found.size ? 'личных данных не было, служебные удалены' : 'метаданные удалены, проверено';
+      } catch (e) { console.error(e); it.status = 'error'; it.note = friendly(e); }
+      renderQueue();
+    }
+  }
+  $('queue').addEventListener('click', e => {
+    const b = e.target.closest('[data-minfo]'); if (!b) return;
+    const it = items.find(i => i.id === +b.dataset.minfo);
+    if (it) { it.metaOpen = !it.metaOpen; renderQueue(); }
+  });
+  $('queue').addEventListener('toggle', e => {
+    const d = e.target.closest && e.target.closest('details[data-mraw]'); if (!d) return;
+    const it = items.find(i => i.id === +d.dataset.mraw); if (it) it.rawOpen = d.open;
+  }, true);
+  // Dates, countries and units inside the panels are written in the chosen language, so a switch redraws them
+  document.querySelectorAll('[data-lang]').forEach(b => b.addEventListener('click', () => setTimeout(() => { if (opts.mode === 'meta' && !busy) renderQueue(); }, 0)));
+
   // ---------- Compression ----------
   // A rough size forecast shown next to the button (photos by typical ratios, audio and video by bitrate)
   const EST_IMG = { light: 0.5, medium: 0.3, strong: 0.15 };
@@ -2650,7 +3214,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   }
 
   $('go').addEventListener('click', async () => {
-    const todo = items.filter(it => opts.mode === 'pdf' ? pdfOk(it) : opts.mode === 'trim' ? (it.kind === 'audio' || it.kind === 'video') : opts.mode === 'bg' ? bgOk(it) : it.kind);
+    const todo = items.filter(it => opts.mode === 'meta' ? metaOk(it) : opts.mode === 'pdf' ? pdfOk(it) : opts.mode === 'trim' ? (it.kind === 'audio' || it.kind === 'video') : opts.mode === 'bg' ? bgOk(it) : it.kind);
     if (!todo.length || busy) return;
     busy = true; stopRequested = false; $('stop').disabled = false;
     holdScreen(true);
@@ -2658,7 +3222,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     todo.forEach(it => { it.status = 'ready'; it.note = ''; });
     renderQueue();
     try {
-      if (opts.mode === 'compress') await runCompress(todo); else if (opts.mode === 'trim') await runTrim(todo); else if (opts.mode === 'bg') await runBg(todo); else if (opts.mode === 'pdf') await runPdfTools(todo); else await runConvert(todo);
+      if (opts.mode === 'compress') await runCompress(todo); else if (opts.mode === 'trim') await runTrim(todo); else if (opts.mode === 'bg') await runBg(todo); else if (opts.mode === 'pdf') await runPdfTools(todo); else if (opts.mode === 'meta') await runMeta(todo); else await runConvert(todo);
     } finally {
       busy = false; holdScreen(false); renderQueue();
     }
@@ -2766,7 +3330,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   $('matrix').innerHTML = MATRIX.map(([label, ins, outs]) =>
     `<tr><td>${label}</td><td><div class="chips">${ins.map(e => chip(e, FAMILY[KIND[e]] || 'other')).join('')}</div></td><td><div class="chips">${outs.map(e => chip(e, OUT_FAMILY[e] || 'other')).join('')}</div></td></tr>`).join('');
 
-  setMode(['compress', 'trim', 'bg', 'pdf'].includes(opts.mode) ? opts.mode : 'convert');
+  setMode(['compress', 'trim', 'bg', 'pdf', 'meta'].includes(opts.mode) ? opts.mode : 'convert');
 })();
 </script>
 </body>
