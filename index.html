@@ -215,6 +215,24 @@ table.matrix { width: 100%; border-collapse: collapse; font-size: 14px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2.4s; } .drop { transition: none; } }
 
+/* Background removal by colour: swatch, pipette window with a live preview */
+.btn.small { padding: 6px 10px; font-size: 13px; border-color: var(--line); color: var(--ink); }
+.bgc-wrap { display: inline-flex; gap: 8px; align-items: center; }
+.swatch-btn { width: auto; padding: 0 8px; gap: 6px; display: inline-flex; align-items: center; border-color: var(--line); color: var(--ink); font-size: 12.5px; }
+.swatch-btn i, .picker-sw { width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--line); background: var(--c, #fff); display: inline-block; flex: none; }
+.checker { background-color: #fff; background-image: linear-gradient(45deg, #d5d9df 25%, transparent 25%, transparent 75%, #d5d9df 75%), linear-gradient(45deg, #d5d9df 25%, transparent 25%, transparent 75%, #d5d9df 75%); background-size: 16px 16px; background-position: 0 0, 8px 8px; }
+.picker { position: fixed; inset: 0; z-index: 60; background: rgb(0 0 0 / .55); display: grid; place-items: center; padding: 16px; }
+.picker[hidden] { display: none; }
+.picker-box { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; width: min(920px, 100%); max-height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; }
+.picker-head, .picker-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 16px; }
+.picker-head { justify-content: space-between; border-bottom: 1px solid var(--line); }
+.picker-head h2 { margin: 0; font-size: 15px; }
+.picker-foot { border-top: 1px solid var(--line); }
+.picker-foot .grow { flex: 1 1 180px; display: grid; gap: 2px; }
+.picker-stage { display: grid; place-items: center; padding: 12px; min-height: 0; overflow: auto; }
+.picker-stage canvas { max-width: 100%; max-height: 62vh; cursor: crosshair; border-radius: 6px; touch-action: none; }
+.picker-hex { font-family: var(--mono); font-size: 13px; min-width: 64px; }
+
 /* Off-screen sheet used to lay out documents before they become PDF pages */
 .render-host { position: absolute; left: -12000px; top: 0; width: 794px; padding: 0 72px; background: #fff; color: #16181d; font-family: "Golos Text", Arial, sans-serif; font-size: 14px; line-height: 1.6; }
 .render-host img { max-width: 100%; height: auto; }
@@ -594,11 +612,49 @@ details.more-help[open] { display: grid; gap: 8px; }
       <div data-for="bg" hidden>
         <div class="set">
           <h3>Удаление фона</h3>
-          <p class="hint">Нейросеть находит главный предмет на фото и делает всё остальное прозрачным. Фото никуда не отправляется.</p>
+          <p class="hint">Фон становится прозрачным, фото никуда не отправляется.</p>
+          <div class="field">
+            <span id="bgm-label">Способ</span>
+            <div class="seg words" role="group" aria-labelledby="bgm-label" id="bgm">
+              <button type="button" data-v="ai" aria-pressed="true">Нейросеть</button>
+              <button type="button" data-v="color" aria-pressed="false">По цвету</button>
+            </div>
+          </div>
+          <p class="hint" id="bgm-hint"></p>
+        </div>
+        <div class="set" id="bg-color-set" hidden>
+          <h3>Какой цвет убрать</h3>
+          <div class="field">
+            <div class="seg words" role="group" aria-label="Цвет фона" id="bgcm">
+              <button type="button" data-v="auto" aria-pressed="true">Цвет у краёв</button>
+              <button type="button" data-v="pick" aria-pressed="false">Выбрать сам</button>
+            </div>
+          </div>
+          <div class="field-row" id="bgc-row" hidden>
+            <label for="bgc">Цвет фона</label>
+            <span class="bgc-wrap"><input type="color" id="bgc" value="#ffffff"><button class="btn ghost small" id="bgc-pick" type="button"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 4.5l2 2M3 13l1-3 5.8-5.8a1.4 1.4 0 0 1 2 2L6 12z"/><path d="M10.5 2.5l3 3"/></svg>Пипетка</button></span>
+          </div>
+          <p class="hint" id="bgcm-hint"></p>
+          <div class="field">
+            <div class="field-row"><label for="bgtol">Допуск</label><output id="bgtol-out">25</output></div>
+            <input type="range" id="bgtol" min="1" max="100" step="1" value="25">
+            <p class="hint">Больше: уходят и похожие оттенки, тени, переливы. Меньше: только почти точно этот цвет.</p>
+          </div>
+          <div class="field">
+            <span id="bgarea-label">Где убирать</span>
+            <div class="seg words" role="group" aria-labelledby="bgarea-label" id="bgarea">
+              <button type="button" data-v="edge" aria-pressed="true">Фон от краёв</button>
+              <button type="button" data-v="all" aria-pressed="false">Везде на фото</button>
+            </div>
+            <p class="hint" id="bgarea-hint"></p>
+          </div>
+          <label class="check"><input type="checkbox" id="bgsoft" checked> Сгладить края и убрать цветную кайму. Для пиксель-арта и иконок выключите.</label>
+        </div>
+        <div class="set" id="bg-ai-set">
+          <h3>Нейросеть</h3>
           <div class="field">
             <span id="bgq-label">Модель</span>
-            <div class="seg words grid2" role="group" aria-labelledby="bgq-label" id="bgq">
-              <button type="button" data-v="none" aria-pressed="false">Без нейросети</button>
+            <div class="seg words" role="group" aria-labelledby="bgq-label" id="bgq">
               <button type="button" data-v="fast" aria-pressed="false">Быстро</button>
               <button type="button" data-v="hq" aria-pressed="true">Точнее</button>
               <button type="button" data-v="max" aria-pressed="false">Максимум</button>
@@ -663,6 +719,24 @@ details.more-help[open] { display: grid; gap: 8px; }
 </div>
 
 <div class="toast" id="toast" role="status" hidden></div>
+
+<div class="picker" id="cpick" role="dialog" aria-modal="true" aria-labelledby="cpick-title" hidden>
+  <div class="picker-box">
+    <div class="picker-head">
+      <h2 id="cpick-title">Нажмите на цвет, который нужно убрать</h2>
+      <button class="icon-btn" id="cpick-close" type="button" aria-label="Закрыть"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+    </div>
+    <div class="picker-stage checker"><canvas id="cpick-canvas"></canvas></div>
+    <div class="picker-foot">
+      <span class="picker-sw" id="cpick-sw"></span><span class="picker-hex" id="cpick-hex">—</span>
+      <div class="grow">
+        <div class="field-row"><label for="cpick-tol">Допуск</label><output id="cpick-tol-out">25</output></div>
+        <input type="range" id="cpick-tol" min="1" max="100" step="1" value="25">
+      </div>
+      <button class="btn primary" id="cpick-done" type="button">Готово</button>
+    </div>
+  </div>
+</div>
 
 <script src="i18n.js"></script>
 <script src="meta.js"></script>
@@ -736,7 +810,7 @@ details.more-help[open] { display: grid; gap: 8px; }
     ['Фото и картинки', ['jpg', 'png', 'webp', 'heic', 'gif', 'bmp', 'tiff', 'svg', 'avif', 'ico'], ['png', 'jpg', 'webp', 'gif', 'bmp', 'ico', 'pdf']],
     ['Видео', ['mp4', 'mov', 'webm', 'mkv', 'm4v', 'ts', 'ogv', '3gp'], ['mp4', 'webm', 'mov', 'mkv', 'gif', 'mp3', 'wav', 'ogg', 'm4a']],
     ['Аудио', ['mp3', 'wav', 'm4a', 'ogg', 'opus', 'flac', 'aac'], ['mp3', 'wav', 'ogg', 'm4a']],
-    ['PDF', ['pdf'], ['png', 'jpg', 'txt']],
+    ['PDF', ['pdf'], ['docx', 'png', 'jpg', 'txt']],
     ['Таблицы', ['xlsx', 'xls', 'ods', 'csv', 'tsv'], ['xlsx', 'ods', 'csv', 'json', 'html', 'md', 'pdf']],
     ['Данные', ['json'], ['xlsx', 'csv', 'html', 'md', 'pdf']],
     ['Word', ['docx'], ['pdf', 'html', 'md', 'txt']],
@@ -757,7 +831,7 @@ details.more-help[open] { display: grid; gap: 8px; }
       image: ['png', 'jpg', 'webp', 'gif', 'bmp', 'ico', 'pdf'],
       video: ['mp4', 'webm', 'mov', 'mkv', 'gif', 'mp3', 'wav', 'ogg', 'm4a'],
       audio: ['mp3', 'wav', 'ogg', 'm4a'],
-      pdf: ['png', 'jpg', 'txt'],
+      pdf: ['docx', 'png', 'jpg', 'txt'],
       sheet: ['xlsx', 'ods', 'csv', 'json', 'html', 'md', 'pdf'],
       json: ['xlsx', 'csv', 'html', 'md', 'pdf'],
       md: ['docx', 'html', 'pdf', 'txt'],
@@ -828,7 +902,7 @@ details.more-help[open] { display: grid; gap: 8px; }
   let pixelNote = false;
 
   // ---------- Settings ----------
-  const opts = { mode: 'convert', quality: 0.9, maxSide: 0, bg: '#ffffff', page: 'fit', merge: true, dpi: 150, sep: ';', gifw: 480, giff: 12, level: 'medium', cfmt: 'same', targetKb: 0, cmax: 0, vres: 'auto', mute: false, pdfPages: '', pdfJoin: false, pack: 'auto', bgq: 'hq', ptool: 'merge', prot: 90, ptPages: '', mwhat: 'all' };
+  const opts = { mode: 'convert', quality: 0.9, maxSide: 0, bg: '#ffffff', page: 'fit', merge: true, dpi: 150, sep: ';', gifw: 480, giff: 12, level: 'medium', cfmt: 'same', targetKb: 0, cmax: 0, vres: 'auto', mute: false, pdfPages: '', pdfJoin: false, pack: 'auto', bgq: 'hq', bgm: 'ai', bgcm: 'auto', bgc: '#ffffff', bgtol: 25, bgarea: 'edge', bgsoft: true, ptool: 'merge', prot: 90, ptPages: '', mwhat: 'all' };
   const store = {
     get() { try { return JSON.parse(localStorage.getItem('formater-opts') || 'null'); } catch { return null; } },
     set(v) { try { localStorage.setItem('formater-opts', JSON.stringify(v)); } catch {} },
@@ -836,6 +910,8 @@ details.more-help[open] { display: grid; gap: 8px; }
   const DEFAULTS = { ...opts };
   Object.assign(opts, store.get() || {});
   opts.pdfPages = '';
+  // «Без нейросети» used to be one of the models; it is now the colour method with the colour taken from the edges
+  if (opts.bgq === 'none') Object.assign(opts, { bgq: 'hq', bgm: 'color', bgcm: 'auto' });
   const syncers = []; // put every control back in line with opts after a reset
   function bindSeg(id, key, cast, after) {
     const el = $(id);
@@ -879,12 +955,42 @@ details.more-help[open] { display: grid; gap: 8px; }
   ptoolUi();
   bindSeg('bgq', 'bgq', String, () => { for (const k in bgBad) delete bgBad[k]; bgqUi(); renderQueue(); });
   const BGQ_HINT = {
-    none: 'Без нейросети: мгновенно и на любом устройстве, но хорошо вырезает только однотонный фон, например белый стол или зелёную стену.',
     fast: 'Быстро: модель около 5 МБ скачивается один раз. Подходит для простых фото, но чаще ошибается на волосах и мелких деталях.',
     hq: 'Точнее: модель около 42 МБ скачивается один раз. Лучше справляется с руками, волосами и мелкими деталями. Подходит для большинства фото.',
     max: 'Максимум: модель около 90 МБ, на каждое фото уходит до минуты. Края и мелкие детали аккуратнее всего. Если модель не запустится, сайт сам вернётся к «Точнее».',
   };
-  function bgqUi() { $('bgq-hint').textContent = BGQ_HINT[opts.bgq] || ''; }
+  const BGM_HINT = {
+    ai: 'Нейросеть сама решает, где главный предмет. Подходит для людей, животных и вещей на сложном фоне.',
+    color: 'По цвету: без нейросети и мгновенно. Убирается выбранный цвет и похожие оттенки. Лучше всего для однотонного фона, логотипов, хромакея и скриншотов.',
+  };
+  const BGCM_HINT = {
+    auto: 'Цвет фона определяется по краям фото. Подходит, когда фон по краям одного цвета.',
+    pick: 'Нажмите «Пипетка» и укажите фон прямо на фото, там же видно результат. У каждого фото в очереди есть своя пипетка.',
+  };
+  const BGAREA_HINT = {
+    edge: 'Убирается только фон, который касается краёв фото. Такой же цвет внутри предмета останется, например белые глаза на белом фоне.',
+    all: 'Убирается этот цвет во всём фото, даже внутри предмета: в буквах, в дырках, между деталями.',
+  };
+  function bgqUi() {
+    $('bgq-hint').textContent = BGQ_HINT[opts.bgq] || '';
+    $('bgm-hint').textContent = BGM_HINT[opts.bgm] || '';
+    $('bgcm-hint').textContent = BGCM_HINT[opts.bgcm] || '';
+    $('bgarea-hint').textContent = BGAREA_HINT[opts.bgarea] || '';
+    $('bg-ai-set').hidden = opts.bgm !== 'ai';
+    $('bg-color-set').hidden = opts.bgm !== 'color';
+    $('bgc-row').hidden = opts.bgcm !== 'pick';
+    $('bgc').value = opts.bgc;
+    $('bgtol').value = opts.bgtol; $('bgtol-out').textContent = opts.bgtol;
+    $('bgsoft').checked = opts.bgsoft;
+  }
+  const bgRedo = () => { if (opts.mode === 'bg') { resetDone(); renderQueue(); } };
+  bindSeg('bgm', 'bgm', String, () => { bgqUi(); bgRedo(); });
+  bindSeg('bgcm', 'bgcm', String, () => { bgqUi(); bgRedo(); });
+  bindSeg('bgarea', 'bgarea', String, () => { bgqUi(); bgRedo(); });
+  $('bgc').addEventListener('input', e => { opts.bgc = e.target.value; store.set(opts); bgRedo(); });
+  $('bgtol').addEventListener('input', e => { opts.bgtol = +e.target.value; $('bgtol-out').textContent = e.target.value; store.set(opts); });
+  $('bgsoft').addEventListener('change', e => { opts.bgsoft = e.target.checked; store.set(opts); });
+  syncers.push(bgqUi);
   bgqUi();
   const MW_HINT = {
     all: 'Удаляется всё: место, дата, камера, автор, программа и описание. Фото не пережимаются, качество не меняется. Поворот фото и цветовой профиль остаются, чтобы картинка выглядела как раньше.',
@@ -1060,7 +1166,11 @@ details.more-help[open] { display: grid; gap: 8px; }
         else if (!it.kind) status = '<span class="status-err">Этот формат пока не поддерживается</span>';
         else if (trimMode && it.kind !== 'audio' && it.kind !== 'video') status = '<span class="status-warn">В этой вкладке только аудио и видео</span>';
         else if (bgMode && !bgOk(it)) status = '<span class="status-warn">В этой вкладке только фото</span>';
-        else if (bgMode) right = `<div class="to"><span class="squeeze">убрать фон, сохранить в</span>${chip('png', 'image')}</div>`;
+        else if (bgMode) {
+          const pick = opts.bgm === 'color' && opts.bgcm === 'pick'
+            ? `<button class="icon-btn swatch-btn" type="button" data-pick="${it.id}" style="--c:${esc(it.bgc || opts.bgc)}" title="Пипетка: выбрать фон на этом фото" aria-label="Пипетка для ${esc(it.file.name)}"${busy ? ' disabled' : ''}><i></i>Пипетка</button>` : '';
+          right = `<div class="to">${pick}<span class="squeeze">убрать фон, сохранить в</span>${chip('png', 'image')}</div>`;
+        }
         else if (pdfMode && !pdfOk(it)) status = `<span class="status-warn">${it.kind === 'image' ? 'Картинки можно только объединять' : 'В этой вкладке только PDF и картинки'}</span>`;
         else if (pdfMode) {
           const i = items.indexOf(it);
@@ -1157,6 +1267,8 @@ details.more-help[open] { display: grid; gap: 8px; }
         'Нужна часть документа: впишите страницы, например 1-5, 8, 11-.',
         ['Для больших PDF берите JPG и 96–150 dpi: это быстрее и легче для памяти.', 'pdf:png,jpg'],
         ['TXT достаёт текст. Сканы без текстового слоя переводите в картинки.', 'pdf:txt'],
+        ['Word: текст, заголовки, жирный и курсив можно править, картинки переносятся. Сложная вёрстка с рамками и колонками может съехать.', 'pdf:docx'],
+        ['Сканы без текстового слоя попадут в Word картинками страниц: текст на них не редактируется.', 'pdf:docx'],
       ] },
       table: { title: 'Таблицы и данные', items: [
         ['Русский Excel открывает CSV с точкой с запятой, это настройка по умолчанию. Для программ и сайтов чаще нужна запятая.', 'table:csv'],
@@ -1186,8 +1298,9 @@ details.more-help[open] { display: grid; gap: 8px; }
       image: { title: 'Фото и картинки', items: [
         'Лучше всего работают фото, где главный предмет чётко виден: человек, животное, вещь на столе.',
         'Результат сохраняется в PNG: только он умеет хранить прозрачность. JPG прозрачность теряет.',
-        ['Мелкие детали вроде волос и шерсти у этой модели получаются хуже. Для таких фото выберите «Точнее» или «Максимум».', () => opts.bgq === 'fast' || opts.bgq === 'none'],
-        ['Если фон однотонный, режим «Без нейросети» справится мгновенно и без скачивания модели.', () => opts.bgq !== 'none'],
+        ['Мелкие детали вроде волос и шерсти у этой модели получаются хуже. Для таких фото выберите «Точнее» или «Максимум».', () => opts.bgm === 'ai' && opts.bgq === 'fast'],
+        ['Если нейросеть путает фон и предмет, а фон однотонный, переключитесь на «По цвету»: пипеткой укажите фон и сразу увидите результат.', () => opts.bgm === 'ai'],
+        ['Остался ореол или тень: прибавьте допуск. Пропала часть предмета: убавьте допуск или выберите «Фон от краёв».', () => opts.bgm === 'color'],
         'Чтобы залить фон цветом, откройте PNG в любом редакторе или переведите его в JPG на вкладке «Конвертировать»: фон возьмётся из настроек.',
       ] },
     },
@@ -1930,13 +2043,295 @@ details.more-help[open] { display: grid; gap: 8px; }
       const parts = [];
       for (const n of pages) {
         if (stopRequested) throw new Stopped();
-        const tc = await (await doc.getPage(n)).getTextContent();
-        parts.push(tc.items.map(t => t.str + (t.hasEOL ? '\n' : '')).join(''));
+        const page = await doc.getPage(n);
+        // Lines are rebuilt from positions: pdf.js often gives words without the spaces between them
+        const L = await pdfPageLayout(page, false);
+        parts.push(pdfParas(L).map(p => p.lines.map(l => l.text).reduce(joinLine, '')).join('\n\n'));
+        page.cleanup();
       }
       const text = parts.join('\n\n').trim();
       if (!text) throw new Error('В PDF нет текстового слоя (похоже на скан). Сохраните его в PNG или JPG.');
       return [{ name: `${baseOf(item.file.name)}.txt`, blob: textBlob(text, 'text/plain') }];
     } finally { doc.destroy(); }
+  }
+
+  // ---------- PDF → Word: the text layer read back into lines and paragraphs, pictures cut out of the page ----------
+  const median = a => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); return s[s.length >> 1]; };
+  function fontFamily(n) {
+    if (/courier|mono|consol|menlo/i.test(n)) return 'Courier New';
+    if (/sans|arial|helvet|verdana|calibri|segoe|tahoma|roboto|open|inter|golos|pt ?sans/i.test(n)) return 'Arial';
+    if (/times|serif|roman|georgia|garamond|cambria|minion|book|pt ?serif|palatin/i.test(n)) return 'Times New Roman';
+    return 'Arial';
+  }
+  // One page → lines in reading order (each with runs of the same style), page size, and pictures if asked for
+  async function pdfPageLayout(page, withImages) {
+    const lib = window.pdfjsLib, U = lib.Util;
+    const vp = page.getViewport({ scale: 1 });
+    const W = vp.width, H = vp.height;
+    // The operator list loads the fonts, so their real names (Arial-BoldMT…) can tell bold and italic apart
+    const ops = await page.getOperatorList();
+    const tc = await page.getTextContent();
+    const fonts = {};
+    const style = name => fonts[name] || (fonts[name] = (() => {
+      let f = null;
+      try { if (page.commonObjs.has(name)) f = page.commonObjs.get(name); } catch {}
+      const n = String((f && f.name) || '') + ' ' + String((tc.styles[name] && tc.styles[name].fontFamily) || '');
+      return { b: !!(f && (f.bold || f.black)) || /bold|black|heavy|semibold|demi/i.test(n), i: !!(f && f.italic) || /italic|oblique/i.test(n), f: fontFamily(n) };
+    })());
+    const items = [];
+    for (const it of tc.items) {
+      if (!it.str || !it.str.trim()) continue;
+      const t = U.transform(vp.transform, it.transform);
+      const size = Math.hypot(t[2], t[3]);
+      if (size < 1) continue;
+      items.push({ s: it.str, x: t[4], y: t[5], w: Math.abs(it.width) || it.str.length * size * 0.5, size, ...style(it.fontName) });
+    }
+    // Items on one baseline make a line
+    items.sort((a, b) => a.y - b.y || a.x - b.x);
+    const rows = [];
+    for (const it of items) {
+      let row = null;
+      for (let k = rows.length - 1; k >= Math.max(0, rows.length - 3); k--) if (Math.abs(rows[k].y - it.y) < Math.min(rows[k].size, it.size) * 0.45) { row = rows[k]; break; }
+      if (row) { row.items.push(it); row.size = Math.max(row.size, it.size); } else rows.push({ y: it.y, size: it.size, items: [it] });
+    }
+    rows.forEach(r => r.items.sort((a, b) => a.x - b.x));
+    const ex = it => it.x + it.w;
+    // Two columns: a vertical gap near the middle that no text crosses, with long lines on both sides of it.
+    // (A table also has such gaps, but its cells are short, so it stays one column.)
+    let gut = null;
+    if (items.length > 20) {
+      const L0 = Math.min(...items.map(i => i.x)), R0 = Math.max(...items.map(ex));
+      let best = null;
+      for (let g = W * 0.35; g <= W * 0.65; g += 2) {
+        let cross = 0;
+        for (const r of rows) if (r.items.some(i => i.x < g && ex(i) > g)) cross++;
+        if (!best || cross < best.cross) best = { g, cross };
+      }
+      if (best && best.cross <= rows.length * 0.15) {
+        const g = best.g, sideW = (side, a, b) => rows.map(r => r.items.filter(i => side ? i.x >= g : ex(i) <= g)).filter(p => p.length).map(p => (Math.max(...p.map(ex)) - p[0].x) / (b - a));
+        const lw = sideW(false, L0, g), rw = sideW(true, g, R0);
+        if (lw.length >= 5 && rw.length >= 5 && median(lw) > 0.6 && median(rw) > 0.6) gut = g;
+      }
+    }
+    // One stretch of a row → a line. A wide gap means table cells (joined with a tab),
+    // unless the line is justified: then the gaps are just stretched spaces between few words
+    const mkLine = (its, y, L, R) => {
+      const size = Math.max(...its.map(i => i.size));
+      const gaps = its.slice(1).map((it, k) => it.x - ex(its[k])).filter(g => g > size * 0.15);
+      const justified = its[0].x - L < size && R - ex(its[its.length - 1]) < size * 1.5 && gaps.length && Math.max(...gaps) < Math.min(...gaps) * 1.6 + size * 0.3;
+      const ln = { y, size, x0: its[0].x, x1: Math.max(...its.map(ex)), runs: [], last: ' ', tab: false, L, R };
+      its.forEach((it, k) => {
+        const gap = k ? it.x - ex(its[k - 1]) : 0;
+        if (k && gap > size * 2.2 && !justified) { addRun(ln, '\t', it); ln.tab = true; }
+        else if (k && gap > Math.min(it.size, size) * 0.15 && !/\s$/.test(ln.last) && !/^\s/.test(it.s)) addRun(ln, ' ', it);
+        addRun(ln, it.s, it);
+      });
+      return ln;
+    };
+    let lines;
+    if (gut != null) {
+      const span = [], left = [], right = [];
+      for (const r of rows) {
+        if (r.items.some(i => i.x < gut && ex(i) > gut)) { span.push(r); continue; }
+        const a = r.items.filter(i => ex(i) <= gut), b = r.items.filter(i => i.x >= gut);
+        if (a.length) left.push({ y: r.y, items: a });
+        if (b.length) right.push({ y: r.y, items: b });
+      }
+      const bounds = list => [Math.min(...list.map(r => r.items[0].x)), Math.max(...list.flatMap(r => r.items.map(ex)))];
+      const bL = bounds(left), bR = bounds(right), bS = span.length ? bounds(span) : [0, W];
+      const top = Math.min(left[0].y, right[0].y);
+      const mk = (list, b) => list.map(r => mkLine(r.items, r.y, b[0], b[1]));
+      // Reading order: full-width lines above the columns, the left column, the right one, then full-width lines below
+      lines = [...mk(span.filter(r => r.y < top), bS), ...mk(left, bL), ...mk(right, bR), ...mk(span.filter(r => r.y >= top), bS)];
+    } else {
+      const L0 = items.length ? Math.min(...items.map(i => i.x)) : 0, R0 = items.length ? Math.max(...items.map(ex)) : W;
+      lines = rows.map(r => mkLine(r.items, r.y, L0, R0));
+    }
+    lines.forEach(l => { l.text = l.runs.map(r => r.t).join('').replace(/\s+$/, ''); });
+    const out = { W, H, lines: lines.filter(l => l.text.trim()), images: [] };
+    if (withImages) out.images = await pdfPageImages(page, ops, vp, out.lines.length > 0);
+    return out;
+  }
+  function addRun(seg, t, it) {
+    const r = seg.runs[seg.runs.length - 1], size = Math.round(it.size * 2) / 2;
+    if (r && r.b === it.b && r.i === it.i && r.f === it.f && r.size === size) r.t += t;
+    else seg.runs.push({ t, b: it.b, i: it.i, f: it.f, size });
+    seg.last = t.slice(-1);
+  }
+  // Two lines of one paragraph: a word broken by a hyphen is glued back
+  function joinLine(acc, t) {
+    if (!acc) return t;
+    if (/[A-Za-zА-Яа-яЁё]-$/.test(acc) && /^[a-zа-яё]/.test(t)) return acc.slice(0, -1) + t;
+    return acc + ' ' + t;
+  }
+  // Lines → paragraphs: same size, normal line spacing, same left edge, and the previous line ran to the right edge
+  function pdfParas(page) {
+    const paras = [];
+    let p = null;
+    const BULLET = /^\s*([•●▪◦‣∙·–—*-]|\d{1,3}[.)]|[a-zа-я][.)])\s/i;
+    for (const l of page.lines) {
+      const prev = p && p.lines[p.lines.length - 1];
+      let same = !!prev && !prev.tab && !l.tab && Math.abs(l.size - prev.size) < Math.max(0.6, prev.size * 0.08);
+      if (same) {
+        const gap = l.y - prev.y;
+        same = gap > 0 && gap < prev.size * 1.9 && (p.lead == null || gap < p.lead * 1.35);
+        same = same && l.x0 > p.minX - prev.size * 0.6 && l.x0 < p.minX + prev.size * 2.5 && Math.abs(l.L - prev.L) < 1;
+        same = same && !(prev.x1 < prev.L + (prev.R - prev.L) * 0.72 && /[.!?:;»"]$/.test(prev.text));
+        same = same && !BULLET.test(l.text) && l.x0 >= prev.x0 - prev.size * 3;
+        if (same && p.lead == null) p.lead = gap;
+        // A paragraph that runs on at the top of the next column: the line jumps up, starts with a small letter
+        if (!same && l.y < prev.y && Math.abs(l.size - prev.size) < 0.6 && !prev.tab && !l.tab && /^[a-zа-яё]/.test(l.text) && !/[.!?:;]$/.test(prev.text)) same = true;
+      }
+      if (same) { p.lines.push(l); p.minX = Math.min(p.minX, l.x0); p.maxX = Math.max(p.maxX, l.x1); }
+      else { p = { lines: [l], minX: l.x0, maxX: l.x1, size: l.size, lead: null }; paras.push(p); }
+    }
+    return paras;
+  }
+  // Pictures: follow the drawing commands to learn where each image lands on the page, then cut it from a render
+  async function pdfPageImages(page, ops, vp, hasText) {
+    const lib = window.pdfjsLib, O = lib.OPS, U = lib.Util;
+    const boxes = [];
+    let m = [1, 0, 0, 1, 0, 0];
+    const stack = [];
+    const IMG = new Set([O.paintImageXObject, O.paintInlineImageXObject, O.paintImageXObjectRepeat, O.paintJpegXObject].filter(v => v != null));
+    for (let i = 0; i < ops.fnArray.length; i++) {
+      const fn = ops.fnArray[i], a = ops.argsArray[i];
+      if (fn === O.save) stack.push(m);
+      else if (fn === O.restore) m = stack.pop() || m;
+      else if (fn === O.transform) m = U.transform(m, a);
+      else if (fn === O.paintFormXObjectBegin) { stack.push(m); if (a && Array.isArray(a[0]) && a[0].length === 6) m = U.transform(m, a[0]); }
+      else if (fn === O.paintFormXObjectEnd) m = stack.pop() || m;
+      else if (IMG.has(fn)) {
+        const pts = [[0, 0], [1, 0], [0, 1], [1, 1]].map(p => U.applyTransform(U.applyTransform(p, m), vp.transform));
+        const x0 = Math.max(0, Math.min(...pts.map(p => p[0]))), x1 = Math.min(vp.width, Math.max(...pts.map(p => p[0])));
+        const y0 = Math.max(0, Math.min(...pts.map(p => p[1]))), y1 = Math.min(vp.height, Math.max(...pts.map(p => p[1])));
+        if (x1 - x0 < 16 || y1 - y0 < 16) continue;
+        // A picture under the whole page with text on top is a scan with recognised text or a background: the text is enough
+        if (hasText && (x1 - x0) * (y1 - y0) > vp.width * vp.height * 0.8) continue;
+        if (boxes.some(b => Math.abs(b.x0 - x0) < 2 && Math.abs(b.y0 - y0) < 2 && Math.abs(b.x1 - x1) < 2 && Math.abs(b.y1 - y1) < 2)) continue;
+        boxes.push({ x0, y0, x1, y1 });
+      }
+    }
+    if (!boxes.length) return [];
+    const S = Math.min(2.5, Math.max(1, Math.sqrt(12e6 / (vp.width * vp.height)) ), 150 / 72 * 1.4);
+    const rv = page.getViewport({ scale: S });
+    const c = document.createElement('canvas'); c.width = Math.ceil(rv.width); c.height = Math.ceil(rv.height);
+    const ctx = c.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height);
+    await page.render({ canvasContext: ctx, viewport: rv }).promise;
+    const out = [];
+    for (const b of boxes) {
+      const w = Math.max(1, Math.round((b.x1 - b.x0) * S)), h = Math.max(1, Math.round((b.y1 - b.y0) * S));
+      const pc = document.createElement('canvas'); pc.width = w; pc.height = h;
+      pc.getContext('2d').drawImage(c, Math.round(b.x0 * S), Math.round(b.y0 * S), w, h, 0, 0, w, h);
+      out.push({ ...b, data: new Uint8Array(await (await canvasBlob(pc, 'image/jpeg', 0.88)).arrayBuffer()) });
+      pc.width = pc.height = 0;
+    }
+    c.width = c.height = 0;
+    return out;
+  }
+  async function pdfToDocx(item) {
+    const doc = await openPdf(item.file);
+    let pages;
+    const layouts = [];
+    try {
+      pages = parsePages(opts.pdfPages, doc.numPages);
+      for (let k = 0; k < pages.length; k++) {
+        if (stopRequested) throw new Stopped();
+        setNote(item, `страница ${k + 1} из ${pages.length}`);
+        const page = await doc.getPage(pages[k]);
+        layouts.push(await pdfPageLayout(page, true));
+        page.cleanup();
+        await tick();
+      }
+    } finally { doc.destroy(); }
+    await need('docx');
+    const D = window.docx;
+    // The most common text size is the body; clearly bigger and shorter paragraphs become headings
+    const weight = {};
+    layouts.forEach(L => L.lines.forEach(l => l.runs.forEach(r => { weight[r.size] = (weight[r.size] || 0) + r.t.length; })));
+    const body = +Object.keys(weight).sort((a, b) => weight[b] - weight[a])[0] || 11;
+    const tw = pt => Math.round(pt * 20);
+    let scans = 0;
+    const sections = layouts.map(L => {
+      const paras = pdfParas(L);
+      const xs = L.lines.map(l => l.L), xe = L.lines.map(l => l.R);
+      const left = Math.min(108, Math.max(28, xs.length ? Math.min(...xs) : 56));
+      const right = Math.min(108, Math.max(28, xe.length ? L.W - Math.max(...xe) : 56));
+      const top = Math.min(90, Math.max(24, L.lines.length ? L.lines[0].y - L.lines[0].size * 1.2 : 40));
+      const content = L.W - left - right;
+      if (!L.lines.length && L.images.length) scans++;
+      // Paragraphs keep their reading order (columns!); each picture goes before the first paragraph below it in its column
+      const blocks = paras.map(p => ({ y: p.lines[0].y - p.size, x0: p.minX, x1: p.maxX, p }));
+      for (const im of [...L.images].sort((a, b) => a.y0 - b.y0)) {
+        let at = blocks.findIndex(b => b.p && b.y >= im.y0 && b.x0 < im.x1 && b.x1 > im.x0);
+        if (at < 0) at = blocks.findIndex(b => b.p && b.y >= im.y0);
+        blocks.splice(at < 0 ? blocks.length : at, 0, { y: im.y0, im });
+      }
+      let lastY = null;
+      const children = blocks.map(bk => {
+        if (bk.im) {
+          const im = bk.im, k = Math.min(1, content / (im.x1 - im.x0), (L.H - 72) / (im.y1 - im.y0));
+          const w = (im.x1 - im.x0) * k, h = (im.y1 - im.y0) * k;
+          const off = im.x0 - left, centered = Math.abs((im.x0 + im.x1) / 2 - L.W / 2) < L.W * 0.08;
+          lastY = im.y1;
+          return new D.Paragraph({
+            alignment: centered ? D.AlignmentType.CENTER : D.AlignmentType.LEFT,
+            indent: !centered && off > 12 && off + w < content ? { left: tw(off) } : undefined,
+            children: [new D.ImageRun({ type: 'jpg', data: im.data, transformation: { width: Math.round(w * 4 / 3), height: Math.round(h * 4 / 3) } })],
+          });
+        }
+        const p = bk.p, first = p.lines[0], lastL = p.lines[p.lines.length - 1];
+        const ratio = p.size / body;
+        const text = p.lines.map(l => l.text).reduce(joinLine, '');
+        const allBold = p.lines.every(l => l.runs.every(r => r.b || !r.t.trim()));
+        const level = text.length > 160 || p.lines.length > 3 ? 0 : ratio >= 1.6 ? 1 : ratio >= 1.3 ? 2 : (ratio >= 1.1 && allBold) ? 3 : 0;
+        // Alignment from where the lines sit between the text edges
+        const lg = p.minX - first.L, rg = first.R - p.maxX;
+        let alignment;
+        if (p.lines.length === 1 && lg > p.size * 2 && Math.abs(lg - rg) < p.size * 1.5) alignment = D.AlignmentType.CENTER;
+        else if (p.lines.length === 1 && lg > (first.R - first.L) * 0.35 && rg < p.size) alignment = D.AlignmentType.RIGHT;
+        else if (p.lines.length >= 3 && p.lines.slice(0, -1).every(l => first.R - l.x1 < p.size * 0.8)) alignment = D.AlignmentType.JUSTIFIED;
+        const indent = {};
+        if (!alignment || alignment === D.AlignmentType.JUSTIFIED) {
+          if (lg > p.size * 0.8) indent.left = tw(lg);
+          const fi = first.x0 - p.minX;
+          if (fi > p.size * 0.8) indent.firstLine = tw(fi);
+        }
+        const before = lastY == null ? 0 : Math.max(0, first.y - p.size - lastY - p.size * 0.25);
+        lastY = lastL.y + p.size * 0.25;
+        const lead = p.lead ? Math.min(2.5, Math.max(0.9, p.lead / (p.size * 1.17))) : 1;
+        // Runs: lines are glued with a space (or nothing after a broken word), styles kept
+        const runs = [];
+        p.lines.forEach((l, k) => {
+          if (k) {
+            const prevText = p.lines[k - 1].text;
+            if (/[A-Za-zА-Яа-яЁё]-$/.test(prevText) && /^[a-zа-яё]/.test(l.text)) { const r = runs[runs.length - 1]; if (r) r.t = r.t.replace(/-\s*$/, ''); }
+            else runs.push({ ...l.runs[0], t: ' ' });
+          }
+          l.runs.forEach((r, j) => runs.push({ ...r, t: j === l.runs.length - 1 ? r.t.replace(/\s+$/, '') : r.t }));
+        });
+        const children = [];
+        runs.forEach(r => r.t.split('\t').forEach((piece, j) => {
+          if (j) children.push(new D.TextRun({ children: [new D.Tab()] }));
+          if (piece) children.push(new D.TextRun({ text: piece, bold: r.b || undefined, italics: r.i || undefined, font: r.f, size: Math.round(Math.min(72, Math.max(6, r.size)) * 2), color: level ? '000000' : undefined }));
+        }));
+        return new D.Paragraph({
+          children,
+          heading: level ? D.HeadingLevel['HEADING_' + level] : undefined,
+          alignment,
+          indent: Object.keys(indent).length ? indent : undefined,
+          spacing: { before: Math.min(tw(before), 720), after: 0, line: Math.round(lead * 240) },
+        });
+      });
+      return {
+        properties: { page: { size: L.W > L.H ? { width: tw(L.H), height: tw(L.W), orientation: D.PageOrientation.LANDSCAPE } : { width: tw(L.W), height: tw(L.H) }, margin: { top: tw(top), bottom: tw(36), left: tw(left), right: tw(right) } } },
+        children: children.length ? children : [new D.Paragraph({})],
+      };
+    });
+    if (!layouts.some(L => L.lines.length || L.images.length)) throw new Error('В PDF не нашлось ни текста, ни картинок.');
+    const out = new D.Document({ creator: 'Formater', title: baseOf(item.file.name), styles: { default: { document: { run: { font: 'Arial', size: Math.round(body * 2) } } } }, sections });
+    item.pdfScans = scans;
+    return [{ name: `${baseOf(item.file.name)}.docx`, blob: await D.Packer.toBlob(out) }];
   }
 
   // ---------- Tables ----------
@@ -2227,7 +2622,8 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   const bgOk = it => it.kind === 'image' && it.ext !== 'svg';
   const BG_MODELS = { fast: 'models/u2netp.onnx', hq: 'models/silueta.onnx', max: 'models/isnet.onnx' };
   // Input size and normalisation each network was trained with
-  const BG_CFG = { fast: { S: 320, std: [0.229, 0.224, 0.225] }, hq: { S: 320, std: [0.229, 0.224, 0.225] }, max: { S: 1024, std: [1, 1, 1] } };
+  const IMAGENET = { mean: [0.485, 0.456, 0.406], std: [0.229, 0.224, 0.225] };
+  const BG_CFG = { fast: { S: 320, ...IMAGENET }, hq: { S: 320, ...IMAGENET }, max: { S: 1024, mean: [0.5, 0.5, 0.5], std: [1, 1, 1] } };
   const bgSessions = {};
   const ORT_PROXY = (() => { try { return localStorage.getItem('formater-ortproxy') !== '0'; } catch { return true; } })();
   let bgNote = false;
@@ -2346,14 +2742,14 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   }
   // Soft mask (0..1 per pixel) from the neural network: the better model first, the light one if it can't start
   async function neuralMask(c, key, onProgress) {
-    const W = c.width, H = c.height, { S, std } = BG_CFG[key];
+    const W = c.width, H = c.height, { S, mean, std } = BG_CFG[key];
     // The network sees a 320x320 copy, normalised the way U2-Net was trained
     const sc = document.createElement('canvas'); sc.width = sc.height = S;
     const sg = sc.getContext('2d'); sg.imageSmoothingQuality = 'high'; sg.drawImage(c, 0, 0, S, S);
     const px = sg.getImageData(0, 0, S, S).data;
     let max = 1;
     for (let i = 0; i < px.length; i += 4) max = Math.max(max, px[i], px[i + 1], px[i + 2]);
-    const mean = [0.485, 0.456, 0.406], N = S * S;
+    const N = S * S;
     const input = new Float32Array(3 * N);
     for (let i = 0; i < N; i++) for (let k = 0; k < 3; k++) input[k * N + i] = (px[i * 4 + k] / max - mean[k]) / std[k];
     const sess = await bgModel(key, onProgress);
@@ -2377,8 +2773,14 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       soft[i] = mask[i * 4] / 255;
     }
     await tick();
-    const fine = guidedMask(guide, soft, W, H, Math.max(4, Math.round(Math.max(W, H) / 160)), 1e-3);
-    for (let i = 0; i < P; i++) { const t = Math.min(1, Math.max(0, (fine[i] - 0.25) / 0.5)); fine[i] = t * t * (3 - 2 * t); }
+    const fine = guidedMask(guide, soft, W, H, Math.max(4, Math.round(Math.max(W, H) / 160)), 1e-2);
+    // Only the uncertain edge zone is snapped to the photo: where the network is sure, its answer stays.
+    // Snapping everything used to erase thin parts it had found (masts, straps, legs) and punch holes in objects
+    for (let i = 0; i < P; i++) {
+      const s = soft[i], band = Math.min(1, Math.max(0, 1 - Math.abs(s - 0.5) * 2.5));
+      const t = Math.min(1, Math.max(0, (s * (1 - band) + fine[i] * band - 0.1) / 0.8));
+      fine[i] = t * t * (3 - 2 * t);
+    }
     return fine;
   }
   // No neural network: flood-fill from the edges over pixels that look like the background (works for plain and smooth backgrounds)
@@ -2403,15 +2805,173 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     for (let i = 0; i < P; i++) a[i] = seen[i] ? 0 : 1;
     return boxMean(a, W, H, 1); // a one-pixel feather takes the jaggedness off the edge
   }
+
+  // ---------- Background by colour: no network, the chosen colour and its close shades become transparent ----------
+  const hexRgb = h => { const n = parseInt(String(h).replace('#', ''), 16) || 0; return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  const rgbHex = (r, g, b) => '#' + [r, g, b].map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+  // Colour along the edges of the photo (the median, so a few object pixels touching the edge don't matter)
+  function edgeColor(d, W, H) {
+    const idx = [];
+    const step = Math.max(1, Math.floor((W + H) / 800));
+    for (let x = 0; x < W; x += step) idx.push(x, (H - 1) * W + x);
+    for (let y = 0; y < H; y += step) idx.push(y * W, y * W + W - 1);
+    const med = k => { const v = idx.map(i => d[i * 4 + k]).sort((a, b) => a - b); return v[v.length >> 1]; };
+    return [med(0), med(1), med(2)];
+  }
+  // tol 1…100. area: 'edge' clears only background connected to the photo's border, 'all' clears the colour everywhere.
+  // soft: a smooth ramp at the edge plus colour decontamination, so no halo of the old background is left on the object
+  function colorCut(c, ref, tol, area, soft) {
+    const W = c.width, H = c.height, P = W * H, ctx = c.getContext('2d'), img = ctx.getImageData(0, 0, W, H), d = img.data;
+    if (!ref) ref = edgeColor(d, W, H);
+    const [R, G, B] = ref;
+    // "Red-mean" distance: close to how different two colours look, 0…~800
+    const lo = tol * 2.4, hi = soft ? lo * 1.6 + 12 : lo + 0.001, spread = (lo + hi) / 2;
+    const dist = new Float32Array(P);
+    for (let i = 0, j = 0; i < P; i++, j += 4) {
+      if (d[j + 3] < 8) continue; // already transparent counts as background
+      const r = d[j], g = d[j + 1], b = d[j + 2], rm = (r + R) / 2, dr = r - R, dg = g - G, db = b - B;
+      dist[i] = Math.sqrt((2 + rm / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rm) / 256) * db * db);
+    }
+    const val = x => x <= lo ? 0 : x >= hi ? 1 : (x - lo) / (hi - lo);
+    let a = new Float32Array(P).fill(1);
+    if (area === 'all') for (let i = 0; i < P; i++) a[i] = val(dist[i]);
+    else {
+      // Flood from the border; half-matching edge pixels are softened but don't let the fill leak further into the object
+      const seen = new Uint8Array(P), q = new Int32Array(P);
+      let h = 0, t = 0;
+      const push = i => { if (!seen[i] && dist[i] < hi) { seen[i] = 1; q[t++] = i; } };
+      for (let x = 0; x < W; x++) { push(x); push((H - 1) * W + x); }
+      for (let y = 0; y < H; y++) { push(y * W); push(y * W + W - 1); }
+      while (h < t) {
+        const i = q[h++], x = i % W;
+        a[i] = val(dist[i]);
+        if (dist[i] >= spread) continue;
+        if (x > 0) push(i - 1);
+        if (x < W - 1) push(i + 1);
+        if (i >= W) push(i - W);
+        if (i < P - W) push(i + W);
+      }
+    }
+    if (soft) a = boxMean(a, W, H, 1);
+    for (let i = 0, j = 0; i < P; i++, j += 4) {
+      let al = a[i];
+      if (al >= 1) continue;
+      if (al < 0.04) { d[j + 3] = 0; continue; }
+      if (soft) { // take the old background's share out of the edge pixel
+        d[j] = Math.min(255, Math.max(0, (d[j] - (1 - al) * R) / al));
+        d[j + 1] = Math.min(255, Math.max(0, (d[j + 1] - (1 - al) * G) / al));
+        d[j + 2] = Math.min(255, Math.max(0, (d[j + 2] - (1 - al) * B) / al));
+      } else al = 1;
+      d[j + 3] = Math.round(d[j + 3] * al);
+    }
+    ctx.putImageData(img, 0, 0);
+    return ref;
+  }
+  const bgColorOf = it => opts.bgcm === 'pick' ? hexRgb(it.bgc || opts.bgc) : null;
+
+  // ---------- Pipette: pick the background on the photo itself and see the cut-out right away ----------
+  const pk = { it: null, global: false, src: null, data: null, color: null, raf: 0, back: null };
+  const pkCanvas = $('cpick-canvas');
+  function pkShow(rgb) {
+    $('cpick-sw').style.setProperty('--c', rgb ? rgbHex(...rgb) : 'transparent');
+    $('cpick-hex').textContent = rgb ? rgbHex(...rgb) : '—';
+  }
+  function pkDraw() {
+    cancelAnimationFrame(pk.raf);
+    pk.raf = requestAnimationFrame(() => {
+      if (!pk.src) return;
+      const g = pkCanvas.getContext('2d');
+      g.clearRect(0, 0, pkCanvas.width, pkCanvas.height);
+      if (!pk.color) { g.drawImage(pk.src, 0, 0); return; }
+      const w = document.createElement('canvas'); w.width = pk.src.width; w.height = pk.src.height;
+      w.getContext('2d').drawImage(pk.src, 0, 0);
+      colorCut(w, pk.color, opts.bgtol, opts.bgarea, opts.bgsoft);
+      g.drawImage(w, 0, 0);
+    });
+  }
+  function pkAt(e) {
+    const r = pkCanvas.getBoundingClientRect();
+    const x = Math.floor((e.clientX - r.left) / r.width * pkCanvas.width), y = Math.floor((e.clientY - r.top) / r.height * pkCanvas.height);
+    if (x < 0 || y < 0 || x >= pkCanvas.width || y >= pkCanvas.height) return null;
+    // Average of a 5x5 patch, so JPEG noise doesn't decide the colour
+    const D = pk.data, W = D.width, s = [0, 0, 0];
+    let n = 0;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      const xx = x + dx, yy = y + dy;
+      if (xx < 0 || yy < 0 || xx >= W || yy >= D.height) continue;
+      const j = (yy * W + xx) * 4; s[0] += D.data[j]; s[1] += D.data[j + 1]; s[2] += D.data[j + 2]; n++;
+    }
+    return s.map(v => Math.round(v / n));
+  }
+  async function openPicker(it, global) {
+    let d;
+    try { d = await decodeImage(it.file, it.ext); } catch { toast('Не удалось открыть фото: файл повреждён или этот формат не поддерживается браузером.'); return; }
+    try {
+      pk.src = drawImage(d, false, 1000);
+      pk.data = pk.src.getContext('2d').getImageData(0, 0, pk.src.width, pk.src.height);
+    } finally { d.done(); }
+    pk.it = it; pk.global = global;
+    pk.color = global ? hexRgb(opts.bgc) : it.bgc ? hexRgb(it.bgc) : (opts.bgcm === 'pick' ? hexRgb(opts.bgc) : null);
+    pkCanvas.width = pk.src.width; pkCanvas.height = pk.src.height;
+    $('cpick-tol').value = opts.bgtol; $('cpick-tol-out').textContent = opts.bgtol;
+    pkShow(pk.color); pkDraw();
+    pk.back = document.activeElement;
+    $('cpick').hidden = false;
+    $('cpick-done').focus();
+  }
+  function closePicker(apply) {
+    if ($('cpick').hidden) return;
+    $('cpick').hidden = true;
+    if (apply && pk.color) {
+      const hex = rgbHex(...pk.color);
+      if (pk.global) { opts.bgc = hex; delete pk.it.bgc; }
+      else pk.it.bgc = hex;
+      if (pk.global || !items.some(i => i !== pk.it && i.bgc)) opts.bgc = hex; // the first pick also becomes the default for the rest
+      store.set(opts); bgqUi();
+      if (pk.it.status !== 'working') { pk.it.status = 'ready'; pk.it.note = ''; }
+      renderQueue();
+    }
+    pk.src = pk.data = null;
+    if (pk.back && pk.back.focus) pk.back.focus();
+  }
+  pkCanvas.addEventListener('pointermove', e => { const c = pkAt(e); if (c) pkShow(c); });
+  pkCanvas.addEventListener('pointerleave', () => pkShow(pk.color));
+  pkCanvas.addEventListener('click', e => { const c = pkAt(e); if (c) { pk.color = c; pkShow(c); pkDraw(); } });
+  $('cpick-tol').addEventListener('input', e => {
+    opts.bgtol = +e.target.value; $('cpick-tol-out').textContent = e.target.value;
+    $('bgtol').value = opts.bgtol; $('bgtol-out').textContent = opts.bgtol; store.set(opts); pkDraw();
+  });
+  $('cpick-done').addEventListener('click', () => closePicker(true));
+  $('cpick-close').addEventListener('click', () => closePicker(false));
+  $('cpick').addEventListener('click', e => { if (e.target === $('cpick')) closePicker(false); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('cpick').hidden) closePicker(false); });
+  $('bgc-pick').addEventListener('click', () => {
+    const it = items.find(bgOk);
+    if (!it) { toast('Сначала добавьте фото: пипетка откроет его, чтобы указать фон.'); return; }
+    openPicker(it, true);
+  });
+  $('queue').addEventListener('click', e => {
+    const b = e.target.closest('[data-pick]'); if (!b || busy) return;
+    const it = items.find(i => i.id === +b.dataset.pick);
+    if (it) openPicker(it, false);
+  });
+
   async function removeBackground(item, onProgress) {
     let d;
     try { d = await decodeImage(item.file, item.ext); }
     catch { throw new Error('Не удалось открыть фото: файл повреждён или этот формат не поддерживается браузером.'); }
     try {
+      const name = `${baseOf(item.file.name)}${WORD('-без-фона')}.png`;
+      if (opts.bgm === 'color') {
+        const c = drawImage(d, false, COARSE ? 3072 : 4096);
+        await tick();
+        colorCut(c, bgColorOf(item), opts.bgtol, opts.bgarea, opts.bgsoft);
+        return { name, blob: await encodeCanvas(c, 'png'), simple: false };
+      }
       const c = drawImage(d, false, 2048);
       const W = c.width, H = c.height;
       let alpha, simple = false;
-      const keys = ({ none: [], fast: ['fast'], hq: ['hq', 'fast'], max: ['max', 'hq', 'fast'] }[opts.bgq] || ['hq', 'fast']).filter(k => !bgBad[k]);
+      const keys = ({ fast: ['fast'], hq: ['hq', 'fast'], max: ['max', 'hq', 'fast'] }[opts.bgq] || ['hq', 'fast']).filter(k => !bgBad[k]);
       for (const key of keys) {
         if (bgBad.ort) break;
         try { alpha = await neuralMask(c, key, onProgress); break; }
@@ -2423,12 +2983,12 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       if (!alpha) {
         simple = true;
         alpha = simpleMask(c);
-        if (opts.bgq !== 'none' && !bgNote) { bgNote = true; toast('Нейросеть не запустилась на этом устройстве, поэтому использован простой способ. Он хорошо работает на однотонном фоне.'); }
+        if (!bgNote) { bgNote = true; toast('Нейросеть не запустилась на этом устройстве, поэтому фон убран по цвету у краёв. Это хорошо работает на однотонном фоне.'); }
       }
       const ctx = c.getContext('2d'), img = ctx.getImageData(0, 0, W, H);
       for (let i = 0; i < W * H; i++) img.data[i * 4 + 3] = Math.round(img.data[i * 4 + 3] * alpha[i]);
       ctx.putImageData(img, 0, 0);
-      return { name: `${baseOf(item.file.name)}${WORD('-без-фона')}.png`, blob: await encodeCanvas(c, 'png'), simple };
+      return { name, blob: await encodeCanvas(c, 'png'), simple };
     } finally { d.done(); }
   }
   // The "check" button: runs every step on a tiny picture and writes down what worked
@@ -2440,12 +3000,10 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       const c = document.createElement('canvas'); c.width = c.height = 64;
       const g = c.getContext('2d'); g.fillStyle = '#7aa'; g.fillRect(0, 0, 64, 64); g.fillStyle = '#c33'; g.beginPath(); g.arc(32, 32, 16, 0, 7); g.fill();
       try { simpleMask(c); logLine('OK   simple method'); } catch (e) { logLine('FAIL simple method: ' + e.message); }
-      if (opts.bgq === 'none') logLine('neural network is switched off in the settings');
-      else {
-        const key = ['fast', 'hq', 'max'].includes(opts.bgq) ? opts.bgq : 'hq';
-        try { await neuralMask(c, key, () => {}); logLine(`RESULT neural network works (${key})`); }
-        catch (e) { logLine(`RESULT neural network does NOT work (${key}), stage: ${e && e.stage || 'unknown'}`); }
-      }
+      try { colorCut(c, null, 25, 'edge', true); logLine('OK   colour method'); } catch (e) { logLine('FAIL colour method: ' + e.message); }
+      const key = ['fast', 'hq', 'max'].includes(opts.bgq) ? opts.bgq : 'hq';
+      try { await neuralMask(c, key, () => {}); logLine(`RESULT neural network works (${key})`); }
+      catch (e) { logLine(`RESULT neural network does NOT work (${key}), stage: ${e && e.stage || 'unknown'}`); }
     } finally { b.disabled = false; }
   });
   $('bg-copy').addEventListener('click', async () => {
@@ -2456,13 +3014,13 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   async function runBg(todo) {
     for (const it of todo) {
       if (stopRequested) { it.status = 'error'; it.note = 'Остановлено'; continue; }
-      it.status = 'working'; it.note = (opts.bgq === 'none' || bgSessions[opts.bgq]) ? '' : 'загружаю модель'; renderQueue();
+      it.status = 'working'; it.note = (opts.bgm === 'color' || bgSessions[opts.bgq]) ? '' : 'загружаю модель'; renderQueue();
       await tick();
       try {
         const out = await raceStop(removeBackground(it, pct => setNote(it, pct < 0 ? (opts.bgq === 'max' ? 'считаю, это может занять до минуты' : '') : `загружаю модель ${pct}%`)));
         addResult(out, undefined, true);
         renderResults();
-        it.status = 'done'; it.note = out.simple ? 'простой способ' : '';
+        it.status = 'done'; it.note = out.simple ? 'по цвету у краёв' : '';
       } catch (e) {
         console.error(e); it.status = 'error';
         const m = (e && e.message) || String(e);
@@ -3110,7 +3668,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       case 'image': return t === 'pdf' ? [await imagesToPdf([item], `${baseOf(item.file.name)}.pdf`)] : imageConvert(item, t);
       case 'video': return videoConvert(item, t);
       case 'audio': return audioConvert(item, t);
-      case 'pdf': return t === 'txt' ? pdfToText(item) : pdfToImages(item, t);
+      case 'pdf': return t === 'txt' ? pdfToText(item) : t === 'docx' ? pdfToDocx(item) : pdfToImages(item, t);
       case 'sheet': case 'json': return convertSheet(item, t);
       default: return convertDoc(item, t);
     }
@@ -3169,6 +3727,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
         renderResults();
         it.status = 'done';
         it.note = raw.length < 2 ? '' : outs.length === 1 ? `${files(raw.length)} в одном ZIP` : files(raw.length);
+        if (it.pdfScans) { it.note = `${it.pdfScans} стр. без текста вставлены картинками`; it.pdfScans = 0; }
       } catch (e) { console.error(e); it.status = 'error'; it.note = friendly(e); }
       renderQueue();
     }
