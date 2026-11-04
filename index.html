@@ -3291,7 +3291,10 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     } catch (e) { console.warn(e); }
     let ex = null;
     if (exifSrc) {
-      try { await need('exifr'); ex = await window.exifr.parse(exifSrc, EXIFR_OPTS); } catch (e) { console.warn(e); ex = null; }
+      // If the EXIF reader didn't load, say so: an empty result would read as "nothing personal here"
+      let lib = true;
+      try { await need('exifr'); } catch (e) { console.warn(e); lib = false; R.unread = true; }
+      if (lib) try { ex = await window.exifr.parse(exifSrc, EXIFR_OPTS); } catch (e) { console.warn(e); ex = null; }
     }
     if (ex) {
       const I = ex.ifd0 || {}, E = ex.exif || {}, G = ex.gps || {}, P = ex.iptc || {}, C = ex.icc || {};
@@ -3486,7 +3489,8 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     const R = it.meta;
     if (!R || R === 'loading') return '<span class="status-work"><span class="spin"></span> читаю метаданные</span>';
     if (R.error) return `<span class="status-err">${esc(R.error)}</span>`;
-    return R.found.size ? '<span class="status-warn">есть личные данные</span>' : '<span class="status-ok">личных данных нет</span>';
+    if (R.found.size) return '<span class="status-warn">есть личные данные</span>';
+    return R.unread ? '<span class="status-warn">не удалось проверить EXIF: проверьте интернет. Удалить данные всё равно можно</span>' : '<span class="status-ok">личных данных нет</span>';
   }
   function metaDd(v) {
     if (v && typeof v === 'object' && v.link) return `<dd><span class="mv">${esc(v.text)}</span><br><a href="${esc(v.link)}" target="_blank" rel="noopener noreferrer" title="OpenStreetMap">Открыть на карте</a></dd>`;
@@ -3581,7 +3585,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
         it.status = left.length ? 'skip' : 'done';
         it.note = left.length ? 'осталось: ' + left.map(c => FOUND[c]).join(', ')
           : out.redrawn === 'jpg' ? 'сохранено в JPG без метаданных' : out.redrawn ? 'сохранено в PNG без метаданных'
-          : gpsOnly ? 'место съёмки удалено' : it.meta && !it.meta.found.size ? 'личных данных не было, служебные удалены' : 'метаданные удалены, проверено';
+          : gpsOnly ? 'место съёмки удалено' : (after && after.unread) || (it.meta && it.meta.unread) ? 'метаданные удалены' : it.meta && !it.meta.found.size ? 'личных данных не было, служебные удалены' : 'метаданные удалены, проверено';
       } catch (e) { console.error(e); it.status = 'error'; it.note = friendly(e); }
       renderQueue();
     }
