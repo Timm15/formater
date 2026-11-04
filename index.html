@@ -270,9 +270,6 @@ details.tip ul { margin: 0 0 8px; padding-left: 18px; color: var(--muted); font-
 .trim-row .btn { padding: 7px 12px; }
 .run-note { padding: 0 16px 14px; margin: 0; }
 .diag { margin: 8px 0; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--sunken); font: 11px/1.45 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-all; max-height: 220px; overflow: auto; user-select: text; }
-.lang { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
-.lang button { border: 0; background: transparent; padding: 5px 10px; border-radius: 7px; cursor: pointer; color: var(--muted); font-size: 13px; min-height: 30px; }
-.lang button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .estimate { font-size: 13px; color: var(--muted); min-width: 0; flex: 1 1 180px; }
 @media (max-width: 560px) {
   .modes { display: flex; flex-wrap: wrap; width: 100%; }
@@ -285,9 +282,7 @@ details.tip ul { margin: 0 0 8px; padding-left: 18px; color: var(--muted); font-
   .res [data-save] { padding-inline: 12px; }
 }
 header.top { position: relative; }
-header.top .lang { position: absolute; top: 2px; right: 0; }
 @media (max-width: 420px) {
-  .lang button { padding: 4px 7px; font-size: 12px; }
   .brand h1 { font-size: 26px; }
 }
 .pdf-move { display: flex; gap: 2px; }
@@ -345,11 +340,6 @@ details.more-help[open] { display: grid; gap: 8px; }
         <h1>Formater</h1>
       </div>
       <p class="tagline">Конвертирует, сжимает и обрезает фото, видео, аудио, PDF, таблицы и документы, убирает фон и метаданные. Перетащите файлы, выберите действие и скачайте результат.</p>
-    </div>
-    <div class="lang" role="group" aria-label="Language">
-      <button type="button" data-lang="ru" aria-pressed="false">RU</button>
-      <button type="button" data-lang="en" aria-pressed="false">EN</button>
-      <button type="button" data-lang="zh" aria-pressed="false">中文</button>
     </div>
     <span class="privacy">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
@@ -738,14 +728,23 @@ details.more-help[open] { display: grid; gap: 8px; }
   </div>
 </div>
 
-<script src="i18n.js"></script>
 <script src="meta.js"></script>
 <script>
 (() => {
   'use strict';
 
   // ---------- Libraries, loaded on first use ----------
-  const CDN = 'https://cdn.jsdelivr.net/npm/';
+  // Two mirrors of the same npm files: if jsDelivr doesn't answer (it is blocked in some networks), unpkg is tried,
+  // and whichever answered is used first from then on (also for the pdf.js worker and the onnxruntime files)
+  const CDNS = ['https://cdn.jsdelivr.net/npm/', 'https://unpkg.com/'];
+  let CDN = CDNS[0];
+  async function fromCdn(path, load) {
+    let err;
+    for (const base of [CDN, ...CDNS.filter(b => b !== CDN)]) {
+      try { const v = await load(base + path); CDN = base; return v; } catch (e) { err = e; }
+    }
+    throw err;
+  }
   const LIBS = {
     jszip: ['jszip@3.10.1/dist/jszip.min.js'],
     jspdf: ['jspdf@2.5.1/dist/jspdf.umd.min.js'],
@@ -775,20 +774,20 @@ details.more-help[open] { display: grid; gap: 8px; }
     return new Promise((res, rej) => {
       const s = document.createElement('script');
       s.src = src; s.onload = res;
-      s.onerror = () => { const e = new Error(LOAD_ERR); e.detail = src; rej(e); };
+      s.onerror = () => { s.remove(); const e = new Error(LOAD_ERR); e.detail = src; rej(e); };
       document.head.appendChild(s);
     });
   }
   function need(name) {
     if (!loaded[name]) {
-      loaded[name] = LIBS[name].reduce((p, path) => p.then(() => addScript(CDN + path)), Promise.resolve())
+      loaded[name] = LIBS[name].reduce((p, path) => p.then(() => fromCdn(path, addScript)), Promise.resolve())
         .catch(e => { delete loaded[name]; throw e; });
     }
     return loaded[name];
   }
   function mod(name) {
     if (!loaded['m:' + name]) {
-      loaded['m:' + name] = import(CDN + MODULES[name]).catch(() => { delete loaded['m:' + name]; throw new Error(LOAD_ERR); });
+      loaded['m:' + name] = fromCdn(MODULES[name], u => import(u)).catch(() => { delete loaded['m:' + name]; throw new Error(LOAD_ERR); });
     }
     return loaded['m:' + name];
   }
@@ -1186,6 +1185,7 @@ details.more-help[open] { display: grid; gap: 8px; }
           if (!list.includes(it.target)) it.target = defaultTarget(it.ext, it.kind);
           right = `<div class="to">${trimBtn}<span class="arrow" aria-hidden="true">→</span><select data-id="${it.id}" aria-label="Формат для ${esc(it.file.name)}">${list.map(t => `<option value="${t}"${t === it.target ? ' selected' : ''}>${LABEL[t]}</option>`).join('')}</select></div>`;
         }
+        if (it.locked && it.status === 'ready') status = '<span class="status-warn">PDF защищён паролем: снимите пароль и добавьте файл снова</span>';
         return `<li class="row">
           <div class="thumb">${thumb}</div>
           <div class="meta"><span class="name" title="${esc(it.file.name)}">${esc(it.file.name)}</span>
@@ -1276,7 +1276,7 @@ details.more-help[open] { display: grid; gap: 8px; }
         ['JSON со списком объектов превращается в таблицу.', () => items.some(i => i.kind === 'json')],
       ] },
       doc: { title: 'Документы и текст', items: [
-        'Word получается из Markdown, HTML и TXT: заголовки, списки, таблицы и ссылки сохраняются.',
+        'Word получается из Markdown, HTML и TXT: заголовки, списки, таблицы, ссылки и картинки сохраняются.',
         ['В PDF страницы A4 сохраняются как картинки: вёрстка точная, но текст не выделяется.', 'doc:pdf'],
         'DOCX в HTML или Markdown удобно, чтобы вставить текст на сайт.',
       ] },
@@ -1418,7 +1418,8 @@ details.more-help[open] { display: grid; gap: 8px; }
 
   // ---------- PDF pages: count, ranges, one-file output ----------
   async function probePdf(it) {
-    try { const doc = await openPdf(it.file); it.pages = doc.numPages; doc.destroy(); } catch { it.pages = 0; }
+    try { const doc = await openPdf(it.file); it.pages = doc.numPages; doc.destroy(); }
+    catch (e) { it.pages = 0; it.locked = !!(e && (e.name === 'PasswordException' || /password/i.test(e.message || ''))); }
     if (!busy) renderQueue();
   }
   function updatePdfHint() {
@@ -2469,9 +2470,12 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       const W = 794, H = 1123, M = 64, CH = H - 2 * M; // A4 at 96 dpi, top/bottom margin
       const top = host.getBoundingClientRect().top;
       const total = Math.ceil(host.scrollHeight);
-      // Candidate page breaks: bottoms of block elements, so a line of text is never cut in half
-      const cuts = [...host.querySelectorAll('p,li,h1,h2,h3,h4,h5,h6,tr,blockquote,pre,img,hr,table,dt,dd,figure,div')]
-        .map(el => Math.round(el.getBoundingClientRect().bottom - top)).filter(v => v > 0).sort((a, b) => a - b);
+      // Candidate page breaks: bottoms of block elements and of every line of text, so a line is never cut in half
+      // (plain text is one long block, and long paragraphs run over a page)
+      const ends = [...host.querySelectorAll('p,li,h1,h2,h3,h4,h5,h6,tr,blockquote,pre,img,hr,table,dt,dd,figure,div')].map(el => el.getBoundingClientRect().bottom);
+      const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT), range = document.createRange();
+      for (let n; (n = walker.nextNode());) { if (n.parentElement.closest('table')) continue; range.selectNodeContents(n); for (const r of range.getClientRects()) ends.push(r.bottom + 3); } // into the gap between lines, below the descenders
+      const cuts = [...new Set(ends.map(v => Math.ceil(v - top)))].filter(v => v > 0).sort((a, b) => a - b);
       const slices = [];
       for (let start = 0; start < total;) {
         let end = start + CH;
@@ -2484,26 +2488,67 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       }
       setNote(item, `вёрстка: ${slices.length} стр.`);
       const S = 2;
-      const canvas = await window.html2canvas(host, { scale: S, backgroundColor: '#ffffff', useCORS: true, logging: false, windowWidth: W, width: W, height: total, scrollX: 0, scrollY: 0 });
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
       const PW = pdf.internal.pageSize.getWidth(), PH = pdf.internal.pageSize.getHeight();
-      slices.forEach(([a, b], i) => {
-        const pc = document.createElement('canvas'); pc.width = W * S; pc.height = H * S;
-        const ctx = pc.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, pc.width, pc.height);
-        ctx.drawImage(canvas, 0, a * S, W * S, (b - a) * S, 0, M * S, W * S, (b - a) * S);
-        if (i > 0) pdf.addPage('a4', 'p');
-        pdf.addImage(pc.toDataURL('image/jpeg', 0.85), 'JPEG', 0, 0, PW, PH);
-      });
+      // The document is drawn in parts: one canvas for all pages goes past the browser's canvas limit
+      // (about 32 000 px tall, 16 million pixels on iPhone) and then comes out blank
+      const maxH = Math.floor(Math.min(32000, (IS_IOS ? 16e6 : 60e6) / (W * S)) / S);
+      let page = 0;
+      for (let i = 0; i < slices.length;) {
+        let j = i;
+        while (j + 1 < slices.length && slices[j + 1][1] - slices[i][0] <= maxH) j++;
+        const top = slices[i][0], h = slices[j][1] - top;
+        if (stopRequested) throw new Stopped();
+        setNote(item, `страница ${page + 1} из ${slices.length}`);
+        const canvas = await window.html2canvas(host, { scale: S, backgroundColor: '#ffffff', useCORS: true, logging: false, windowWidth: W, x: 0, y: top, width: W, height: h, scrollX: 0, scrollY: 0 });
+        for (let k = i; k <= j; k++) {
+          const [a, b] = slices[k];
+          const pc = document.createElement('canvas'); pc.width = W * S; pc.height = H * S;
+          const ctx = pc.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, pc.width, pc.height);
+          ctx.drawImage(canvas, 0, (a - top) * S, W * S, (b - a) * S, 0, M * S, W * S, (b - a) * S);
+          if (page++ > 0) pdf.addPage('a4', 'p');
+          pdf.addImage(pc.toDataURL('image/jpeg', 0.85), 'JPEG', 0, 0, PW, PH);
+          pc.width = pc.height = 0;
+        }
+        canvas.width = canvas.height = 0;
+        i = j + 1;
+        await tick();
+      }
       return pdf.output('blob');
     } finally { host.remove(); }
   }
   // HTML fragment → Word document built from real paragraphs, headings, lists and tables
+  // Pictures for Word: embedded ones (Word files arrive as data: links) and web links the site lets us read.
+  // JPG and PNG go in as they are, anything else is redrawn as PNG
+  async function docxPictures(root) {
+    const pics = new Map();
+    for (const el of root.querySelectorAll('img[src]')) {
+      const url = el.getAttribute('src');
+      if (pics.has(url) || !/^(data:image\/|https?:|blob:)/i.test(url)) continue;
+      try {
+        const blob = await withTimeout(fetch(url).then(r => { if (!r.ok) throw new Error(); return r.blob(); }), 15000, 'picture');
+        const bmp = await createImageBitmap(blob);
+        let data, type;
+        if (/^image\/(jpeg|png)$/.test(blob.type)) { data = new Uint8Array(await blob.arrayBuffer()); type = blob.type === 'image/png' ? 'png' : 'jpg'; }
+        else {
+          const c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height;
+          c.getContext('2d').drawImage(bmp, 0, 0);
+          data = new Uint8Array(await (await canvasBlob(c, 'image/png')).arrayBuffer()); type = 'png';
+        }
+        pics.set(url, { data, type, w: bmp.width, h: bmp.height });
+        bmp.close && bmp.close();
+      } catch { pics.set(url, null); } // unreachable picture: the text still converts
+    }
+    return pics;
+  }
   async function htmlToDocx(fragment, title, plain) {
     await need('docx');
     const D = window.docx;
     const out = [];
     const para = (children, extra = {}) => new D.Paragraph({ children, ...extra });
+    const src = plain != null ? null : sanitize(fragment).body;
+    const pics = src ? await docxPictures(src) : new Map();
     if (plain != null) {
       plain.replace(/\r\n?/g, '\n').split('\n').forEach(line => out.push(para([new D.TextRun(line)])));
     } else {
@@ -2519,7 +2564,15 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
           if (ch.nodeType !== 1) return;
           const t = ch.tagName;
           if (t === 'BR') { r.push(new D.TextRun({ text: '', break: 1 })); return; }
-          if (t === 'IMG') return;
+          if (t === 'IMG') {
+            const pic = pics.get(ch.getAttribute('src'));
+            if (pic) {
+              // Width from the attribute if set, else the picture's own size; never wider than the page text
+              const want = parseFloat(ch.getAttribute('width')) || pic.w, k = Math.min(1, 600 / want) * want / pic.w;
+              r.push(new D.ImageRun({ type: pic.type, data: pic.data, transformation: { width: Math.round(pic.w * k), height: Math.round(pic.h * k) } }));
+            }
+            return;
+          }
           const s = { ...st };
           if (t === 'B' || t === 'STRONG') s.b = true;
           if (t === 'I' || t === 'EM' || t === 'CITE') s.i = true;
@@ -2591,7 +2644,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
         });
         flush();
       };
-      walk(sanitize(fragment).body);
+      walk(src);
     }
     const doc = new D.Document({
       title,
@@ -3543,7 +3596,6 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     const it = items.find(i => i.id === +d.dataset.mraw); if (it) it.rawOpen = d.open;
   }, true);
   // Dates, countries and units inside the panels are written in the chosen language, so a switch redraws them
-  document.querySelectorAll('[data-lang]').forEach(b => b.addEventListener('click', () => setTimeout(() => { if (opts.mode === 'meta' && !busy) renderQueue(); }, 0)));
 
   // ---------- Compression ----------
   // A rough size forecast shown next to the button (photos by typical ratios, audio and video by bitrate)
