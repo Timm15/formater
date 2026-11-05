@@ -233,6 +233,32 @@ table.matrix { width: 100%; border-collapse: collapse; font-size: 14px; }
 .picker-stage canvas { max-width: 100%; max-height: 62vh; cursor: crosshair; border-radius: 6px; touch-action: none; }
 .picker-hex { font-family: var(--mono); font-size: 13px; min-width: 64px; }
 
+/* Signing: a PDF page with movable signature, text and date on top */
+.sg-box { width: min(1060px, 100%); height: min(940px, 100%); }
+.sg-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sg-tools .btn { padding: 7px 11px; font-size: 13px; }
+.sg-nav { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sg-stage { overflow: auto; padding: 14px; min-height: 0; background: var(--sunken); display: grid; place-items: start center; }
+.sg-page { position: relative; box-shadow: 0 1px 8px rgb(0 0 0 / .25); background: #fff; }
+.sg-page canvas { display: block; }
+.sg-layer { position: absolute; inset: 0; }
+.mark { position: absolute; outline: 1px dashed transparent; touch-action: none; user-select: none; }
+.mark:hover, .mark.on { outline-color: #2448d8; }
+.mark.img { cursor: move; }
+.mark.img img { display: block; width: 100%; height: 100%; pointer-events: none; }
+.mark .txt { font-family: Arial, Helvetica, sans-serif; line-height: 1.25; white-space: pre; color: #111; outline: none; cursor: text; min-width: 1ch; padding: 0; user-select: text; }
+.mark .mv, .mark .rs, .mark .del { position: absolute; width: 22px; height: 22px; border-radius: 50%; background: #2448d8; color: #fff; display: none; place-items: center; font-size: 13px; line-height: 1; border: 2px solid #fff; box-shadow: 0 1px 3px rgb(0 0 0 / .35); touch-action: none; padding: 0; }
+.mark:hover .mv, .mark:hover .rs, .mark:hover .del, .mark.on .mv, .mark.on .rs, .mark.on .del { display: grid; }
+.mark .mv { left: -11px; top: -11px; cursor: move; }
+.mark .rs { right: -11px; bottom: -11px; cursor: nwse-resize; }
+.mark .del { right: -11px; top: -11px; background: #d33; cursor: pointer; }
+@media (pointer: coarse) { .mark .mv, .mark .rs, .mark .del { display: grid; width: 28px; height: 28px; } }
+.sig-pad { display: grid; gap: 10px; padding: 14px 16px; }
+.sig-pad canvas { width: 100%; height: 220px; background: #fff; border: 1px solid var(--line); border-radius: 8px; touch-action: none; cursor: crosshair; }
+.sig-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ink { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line); cursor: pointer; padding: 0; }
+.ink[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+
 /* Off-screen sheet used to lay out documents before they become PDF pages */
 .render-host { position: absolute; left: -12000px; top: 0; width: 794px; padding: 0 72px; background: #fff; color: #16181d; font-family: "Golos Text", Arial, sans-serif; font-size: 14px; line-height: 1.6; }
 .render-host img { max-width: 100%; height: auto; }
@@ -594,7 +620,39 @@ details.more-help[open] { display: grid; gap: 8px; }
               <button type="button" data-v="rotate" aria-pressed="false">Повернуть</button>
               <button type="button" data-v="protect" aria-pressed="false">Поставить пароль</button>
               <button type="button" data-v="unlock" aria-pressed="false">Снять пароль</button>
+              <button type="button" data-v="sign" aria-pressed="false">Подписать</button>
+              <button type="button" data-v="stamp" aria-pressed="false">Водяной знак и номера</button>
             </div>
+          </div>
+          <div id="stamp-set" hidden>
+            <div class="field">
+              <label for="wm-text">Водяной знак</label>
+              <input type="text" id="wm-text" placeholder="например КОПИЯ или ваше имя" autocomplete="off">
+            </div>
+            <div class="field">
+              <span id="wm-mode-label">Как разместить</span>
+              <div class="seg words" role="group" aria-labelledby="wm-mode-label" id="wm-mode">
+                <button type="button" data-v="diag" aria-pressed="true">По диагонали</button>
+                <button type="button" data-v="tile" aria-pressed="false">Узором</button>
+                <button type="button" data-v="corner" aria-pressed="false">В углу</button>
+              </div>
+            </div>
+            <div class="field">
+              <div class="field-row"><label for="wm-op">Насыщенность</label><output id="wm-op-out">25%</output></div>
+              <input type="range" id="wm-op" min="8" max="70" step="1" value="25">
+            </div>
+            <label class="check"><input type="checkbox" id="pnum"> Пронумеровать страницы PDF</label>
+            <div class="field" id="pnum-opts">
+              <div class="seg words" role="group" aria-label="Где номер" id="pnum-pos">
+                <button type="button" data-v="bc" aria-pressed="true">Снизу по центру</button>
+                <button type="button" data-v="br" aria-pressed="false">Снизу справа</button>
+              </div>
+              <div class="seg words" role="group" aria-label="Вид номера" id="pnum-fmt">
+                <button type="button" data-v="n" aria-pressed="true">3</button>
+                <button type="button" data-v="nof" aria-pressed="false">3 / 12</button>
+              </div>
+            </div>
+            <p class="hint">Подходит и для фото: знак ляжет на картинку, формат останется тем же.</p>
           </div>
           <div class="field" id="pw-field" hidden>
             <label for="pdf-pw" id="pw-label">Пароль</label>
@@ -727,6 +785,42 @@ details.more-help[open] { display: grid; gap: 8px; }
 </div>
 
 <div class="toast" id="toast" role="status" hidden></div>
+
+<div class="picker" id="signer" role="dialog" aria-modal="true" aria-labelledby="sg-title" hidden>
+  <div class="picker-box sg-box">
+    <div class="picker-head">
+      <h2 id="sg-title">Подпись и текст на PDF</h2>
+      <div class="sg-tools">
+        <button class="btn small" id="sg-add-sig" type="button">✍ Подпись</button>
+        <button class="btn small" id="sg-add-text" type="button">Т Текст</button>
+        <button class="btn small" id="sg-add-date" type="button">Дата</button>
+        <span class="sg-nav"><button class="icon-btn" id="sg-prev" type="button" aria-label="Предыдущая страница">‹</button><span id="sg-pg"></span><button class="icon-btn" id="sg-next" type="button" aria-label="Следующая страница">›</button></span>
+        <button class="btn primary" id="sg-done" type="button">Готово</button>
+      </div>
+    </div>
+    <div class="sg-stage" id="sg-stage"><div class="sg-page" id="sg-page"><canvas id="sg-canvas"></canvas><div class="sg-layer" id="sg-layer"></div></div></div>
+    <div class="picker-foot"><p class="hint" id="sg-hint">Добавьте подпись, текст или дату и перетащите на место. Синий кружок в углу меняет размер, текст правится прямо на странице.</p></div>
+  </div>
+</div>
+
+<div class="picker" id="sigpad" role="dialog" aria-modal="true" aria-labelledby="sp-title" hidden>
+  <div class="picker-box" style="width: min(640px, 100%)">
+    <div class="picker-head"><h2 id="sp-title">Нарисуйте подпись</h2><button class="icon-btn" id="sp-close" type="button" aria-label="Закрыть"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div>
+    <div class="sig-pad">
+      <canvas id="sp-canvas"></canvas>
+      <div class="sig-row">
+        <span class="hint">Цвет:</span>
+        <button class="ink" type="button" data-ink="#1a3a9e" style="background:#1a3a9e" aria-label="Синий" aria-pressed="true"></button>
+        <button class="ink" type="button" data-ink="#111111" style="background:#111" aria-label="Чёрный" aria-pressed="false"></button>
+        <button class="btn small" id="sp-clear" type="button">Стереть</button>
+        <label class="btn small" for="sp-file" style="cursor:pointer">Загрузить фото подписи</label>
+        <input type="file" id="sp-file" accept="image/*" hidden>
+        <button class="btn primary" id="sp-ok" type="button" style="margin-left:auto">Поставить</button>
+      </div>
+      <p class="hint">Распишитесь мышкой или пальцем. Можно сфотографировать подпись на белой бумаге: фон уберётся сам.</p>
+    </div>
+  </div>
+</div>
 
 <div class="picker" id="cpick" role="dialog" aria-modal="true" aria-labelledby="cpick-title" hidden>
   <div class="picker-box">
@@ -921,7 +1015,7 @@ details.more-help[open] { display: grid; gap: 8px; }
   let pixelNote = false;
 
   // ---------- Settings ----------
-  const opts = { mode: 'convert', quality: 0.9, maxSide: 0, bg: '#ffffff', page: 'fit', merge: true, dpi: 150, sep: ';', gifw: 480, giff: 12, level: 'medium', cfmt: 'same', targetKb: 0, cmax: 0, vres: 'auto', mute: false, pdfPages: '', pdfJoin: false, pack: 'auto', bgq: 'hq', bgm: 'ai', bgcm: 'auto', bgc: '#ffffff', bgtol: 25, bgarea: 'edge', bgsoft: true, ptool: 'merge', prot: 90, ptPages: '', mwhat: 'all', ocr: true };
+  const opts = { mode: 'convert', quality: 0.9, maxSide: 0, bg: '#ffffff', page: 'fit', merge: true, dpi: 150, sep: ';', gifw: 480, giff: 12, level: 'medium', cfmt: 'same', targetKb: 0, cmax: 0, vres: 'auto', mute: false, pdfPages: '', pdfJoin: false, pack: 'auto', bgq: 'hq', bgm: 'ai', bgcm: 'auto', bgc: '#ffffff', bgtol: 25, bgarea: 'edge', bgsoft: true, ptool: 'merge', prot: 90, ptPages: '', mwhat: 'all', ocr: true, wmText: '', wmMode: 'diag', wmOpacity: 25, pnum: false, pnumPos: 'bc', pnumFmt: 'n' };
   const store = {
     get() { try { return JSON.parse(localStorage.getItem('formater-opts') || 'null'); } catch { return null; } },
     set(v) { try { localStorage.setItem('formater-opts', JSON.stringify(v)); } catch {} },
@@ -958,6 +1052,14 @@ details.more-help[open] { display: grid; gap: 8px; }
   bindSeg('pack', 'pack', String);
   bindSeg('ptool', 'ptool', String, () => { ptoolUi(); setGoLabel(); resetDone(); renderQueue(); });
   bindSeg('prot', 'prot', Number);
+  bindSeg('wm-mode', 'wmMode', String);
+  bindSeg('pnum-pos', 'pnumPos', String);
+  bindSeg('pnum-fmt', 'pnumFmt', String);
+  const wmUi = () => { $('wm-text').value = opts.wmText; $('wm-op').value = opts.wmOpacity; $('wm-op-out').textContent = opts.wmOpacity + '%'; $('pnum').checked = opts.pnum; $('pnum-opts').hidden = !opts.pnum; };
+  $('wm-text').addEventListener('input', e => { opts.wmText = e.target.value; store.set(opts); });
+  $('wm-op').addEventListener('input', e => { opts.wmOpacity = +e.target.value; $('wm-op-out').textContent = e.target.value + '%'; store.set(opts); });
+  $('pnum').addEventListener('change', e => { opts.pnum = e.target.checked; $('pnum-opts').hidden = !opts.pnum; store.set(opts); });
+  syncers.push(wmUi); wmUi();
   $('pt-pages').value = opts.ptPages;
   $('pt-pages').addEventListener('input', e => { opts.ptPages = e.target.value; store.set(opts); });
   const PT_HINT = {
@@ -967,11 +1069,14 @@ details.more-help[open] { display: grid; gap: 8px; }
     rotate: 'Повернутся все страницы или только указанные. Удобно для сканов, которые легли боком.',
     protect: 'PDF откроется только с паролем. Шифрование AES-256, как у Adobe Acrobat: пароль не подобрать, поэтому не забудьте его.',
     unlock: 'Сохранится копия без пароля и без запретов на печать и копирование. Нужно знать пароль; запреты без пароля на открытие снимаются и так.',
+    sign: 'Нажмите «Разместить» у файла: на странице можно расписаться, вписать текст и дату и перетащить их на место. Потом нажмите «Сохранить».',
+    stamp: 'На каждую страницу ляжет водяной знак и, если нужно, номер. Фото тоже можно: знак ляжет поверх картинки.',
   };
   function ptoolUi() {
     $('pt-hint').textContent = PT_HINT[opts.ptool] || '';
     $('prot-field').hidden = opts.ptool !== 'rotate';
-    $('pt-pages-field').hidden = ['merge', 'protect', 'unlock'].includes(opts.ptool);
+    $('pt-pages-field').hidden = ['merge', 'protect', 'unlock', 'sign'].includes(opts.ptool);
+    if ($('stamp-set')) $('stamp-set').hidden = opts.ptool !== 'stamp';
     $('pw-field').hidden = !['protect', 'unlock'].includes(opts.ptool);
     $('pw-label').textContent = opts.ptool === 'protect' ? 'Новый пароль' : 'Пароль от PDF';
     $('pw-hint').textContent = opts.ptool === 'protect' ? 'Он не сохраняется на сайте. Запишите его: восстановить пароль никто не сможет.' : 'Если PDF открывается без пароля, а запрещены только печать или копирование, поле можно оставить пустым.';
@@ -1074,7 +1179,7 @@ details.more-help[open] { display: grid; gap: 8px; }
   levelHints();
 
   // ---------- Mode ----------
-  const PT_GO = { merge: 'Объединить', split: 'Разделить', extract: 'Выбрать страницы', rotate: 'Повернуть', protect: 'Поставить пароль', unlock: 'Снять пароль' };
+  const PT_GO = { merge: 'Объединить', split: 'Разделить', extract: 'Выбрать страницы', rotate: 'Повернуть', protect: 'Поставить пароль', unlock: 'Снять пароль', sign: 'Сохранить', stamp: 'Добавить' };
   function setGoLabel() {
     const m = opts.mode;
     $('go-label').textContent = m === 'convert' ? 'Конвертировать' : m === 'compress' ? 'Сжать' : m === 'trim' ? 'Обрезать' : m === 'bg' ? 'Убрать фон' : m === 'meta' ? (opts.mwhat === 'gps' ? 'Удалить место съёмки' : 'Удалить метаданные') : PT_GO[opts.ptool] || 'Объединить';
@@ -1209,7 +1314,9 @@ details.more-help[open] { display: grid; gap: 8px; }
         else if (pdfMode) {
           const i = items.indexOf(it);
           const move = opts.ptool === 'merge' ? `<span class="pdf-move"><button class="icon-btn" type="button" data-up="${it.id}" aria-label="Выше" title="Выше"${i === 0 || busy ? ' disabled' : ''}>↑</button><button class="icon-btn" type="button" data-down="${it.id}" aria-label="Ниже" title="Ниже"${i === items.length - 1 || busy ? ' disabled' : ''}>↓</button></span>` : '';
-          right = `<div class="to">${move}<span class="arrow" aria-hidden="true">→</span>${chip('pdf', 'pdf')}</div>`;
+          const place = opts.ptool === 'sign' && it.kind === 'pdf' ? `<button class="btn small" type="button" data-sign="${it.id}"${busy ? ' disabled' : ''}>Разместить${it.marks && it.marks.length ? ` (${it.marks.length})` : ''}</button>` : '';
+          const outExt = opts.ptool === 'stamp' && it.kind === 'image' ? stampExt(it) : 'pdf';
+          right = `<div class="to">${move}${place}<span class="arrow" aria-hidden="true">→</span>${chip(outExt, OUT_FAMILY[outExt])}</div>`;
         }
         else if (compress) {
           const plan = compressPlan(it);
@@ -1325,6 +1432,8 @@ details.more-help[open] { display: grid; gap: 8px; }
         'Выбрать страницы: впишите, какие оставить, например 1-3, 7. Это же способ удалить лишние.',
         'Повернуть: исправит сканы, которые легли боком. Можно повернуть только некоторые страницы.',
         'Пароль: поставьте его на PDF перед отправкой по почте или снимите, если он мешает. Пароль никуда не отправляется и не сохраняется.',
+        'Подписать: распишитесь мышкой или пальцем, впишите текст и дату и перетащите их на нужное место страницы.',
+        'Водяной знак и номера: «КОПИЯ» или ваше имя на каждой странице, а также номера страниц внизу.',
         'Текст и качество страниц не меняются: страницы переносятся как есть, без пережатия.',
       ] },
       image: { title: 'Фото и картинки', items: [
@@ -3220,7 +3329,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   }
 
   // ---------- PDF tools: merge, split, pick pages, rotate (pages are copied as they are, nothing is re-rendered) ----------
-  const pdfOk = it => it.kind === 'pdf' || (opts.ptool === 'merge' && it.kind === 'image' && it.ext !== 'svg');
+  const pdfOk = it => it.kind === 'pdf' || ((opts.ptool === 'merge' || opts.ptool === 'stamp') && it.kind === 'image' && it.ext !== 'svg');
   async function loadPdfLib(file) {
     await need('pdflib');
     return window.PDFLib.PDFDocument.load(await file.arrayBuffer());
@@ -3296,7 +3405,276 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       renderQueue();
     }
   }
+  // ---------- Signature, text and date on top of PDF pages ----------
+  const sg = { it: null, doc: null, page: 1, n: 1, s: 1, W: 0, H: 0, on: null };
+  async function openSigner(it) {
+    try { sg.doc = await openPdf(it.file); } catch (e) { toast(friendly(e)); return; }
+    sg.it = it; it.marks = it.marks || []; sg.n = sg.doc.numPages; sg.page = 1; sg.on = null;
+    $('signer').hidden = false;
+    await sgRender();
+  }
+  function closeSigner() {
+    if ($('signer').hidden) return;
+    $('signer').hidden = true;
+    if (sg.doc) { sg.doc.destroy(); sg.doc = null; }
+    const it = sg.it; sg.it = null;
+    if (it) { if (it.status !== 'working') { it.status = 'ready'; it.note = ''; } renderQueue(); }
+  }
+  async function sgRender() {
+    const page = await sg.doc.getPage(sg.page), vp1 = page.getViewport({ scale: 1 });
+    const avail = Math.max(240, Math.min($('sg-stage').clientWidth - 30, 920));
+    sg.s = avail / vp1.width; sg.W = vp1.width; sg.H = vp1.height;
+    const dpr = Math.min(2, window.devicePixelRatio || 1), vp = page.getViewport({ scale: sg.s * dpr });
+    const c = $('sg-canvas'); c.width = Math.ceil(vp.width); c.height = Math.ceil(vp.height);
+    c.style.width = $('sg-page').style.width = `${vp1.width * sg.s}px`; c.style.height = $('sg-page').style.height = `${vp1.height * sg.s}px`;
+    const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    $('sg-pg').textContent = `стр. ${sg.page} из ${sg.n}`;
+    $('sg-prev').disabled = sg.page <= 1; $('sg-next').disabled = sg.page >= sg.n;
+    sgMarks();
+  }
+  // The marks of this page, placed in page points (top-left origin) and shown at the screen scale
+  function sgMarks() {
+    const layer = $('sg-layer'), s = sg.s;
+    layer.innerHTML = '';
+    sg.it.marks.filter(m => m.page === sg.page).forEach(m => {
+      const el = document.createElement('div');
+      el.className = `mark ${m.type}${sg.on === m ? ' on' : ''}`;
+      el.style.left = `${m.x * s}px`; el.style.top = `${m.y * s}px`;
+      if (m.type === 'img') { el.style.width = `${m.w * s}px`; el.style.height = `${m.h * s}px`; el.innerHTML = `<img src="${m.src}" alt="">`; }
+      else {
+        const t = document.createElement('div'); t.className = 'txt'; t.contentEditable = 'plaintext-only'; t.spellcheck = false;
+        if (t.contentEditable !== 'plaintext-only') t.contentEditable = 'true';
+        t.style.fontSize = `${m.size * s}px`; t.textContent = m.text;
+        t.addEventListener('input', () => { m.text = t.innerText.replace(/\n$/, ''); measure(); });
+        t.addEventListener('focus', () => select(m, el));
+        el.appendChild(t);
+        const measure = () => { m.w = t.offsetWidth / s; m.h = t.offsetHeight / s; };
+        requestAnimationFrame(measure);
+      }
+      el.insertAdjacentHTML('beforeend', `${m.type === 'text' ? '<button type="button" class="mv" aria-label="Передвинуть">✥</button>' : ''}<button type="button" class="rs" aria-label="Размер">⤡</button><button type="button" class="del" aria-label="Удалить">×</button>`);
+      el.querySelector('.del').addEventListener('click', () => { sg.it.marks = sg.it.marks.filter(x => x !== m); sg.on = null; sgMarks(); });
+      const drag = (handle, onMove) => handle.addEventListener('pointerdown', e => {
+        if (e.button) return; e.preventDefault(); select(m, el);
+        try { handle.setPointerCapture(e.pointerId); } catch {}
+        const x0 = e.clientX, y0 = e.clientY, start = { ...m };
+        const mv = ev => { onMove((ev.clientX - x0) / s, (ev.clientY - y0) / s, start); place(); };
+        const up = () => { handle.removeEventListener('pointermove', mv); handle.removeEventListener('pointerup', up); handle.removeEventListener('pointercancel', up); };
+        handle.addEventListener('pointermove', mv); handle.addEventListener('pointerup', up); handle.addEventListener('pointercancel', up);
+      });
+      const clamp = () => { m.x = Math.min(Math.max(0, m.x), Math.max(0, sg.W - m.w)); m.y = Math.min(Math.max(0, m.y), Math.max(0, sg.H - m.h)); };
+      const place = () => {
+        clamp(); el.style.left = `${m.x * s}px`; el.style.top = `${m.y * s}px`;
+        if (m.type === 'img') { el.style.width = `${m.w * s}px`; el.style.height = `${m.h * s}px`; }
+        else { const t = el.querySelector('.txt'); t.style.fontSize = `${m.size * s}px`; m.w = t.offsetWidth / s; m.h = t.offsetHeight / s; }
+      };
+      drag(m.type === 'img' ? el : el.querySelector('.mv'), (dx, dy, st) => { m.x = st.x + dx; m.y = st.y + dy; });
+      drag(el.querySelector('.rs'), (dx, dy, st) => {
+        if (m.type === 'img') { const w = Math.max(20, st.w + dx); m.h = st.h * w / st.w; m.w = w; }
+        else m.size = Math.min(96, Math.max(5, st.size * (st.w + dx) / st.w));
+      });
+      layer.appendChild(el);
+    });
+  }
+  function select(m, el) { sg.on = m; $('sg-layer').querySelectorAll('.mark').forEach(x => x.classList.toggle('on', x === el)); }
+  function sgAdd(m) {
+    m.page = sg.page;
+    m.x = Math.max(0, (sg.W - (m.w || 120)) / 2); m.y = Math.max(0, sg.H * 0.72);
+    sg.it.marks.push(m); sg.on = m; sgMarks();
+    if (m.type === 'text') { const t = $('sg-layer').querySelector('.mark.on .txt'); if (t) { t.focus(); document.getSelection().selectAllChildren(t); } }
+  }
+  $('sg-add-text').addEventListener('click', () => sgAdd({ type: 'text', text: 'Текст', size: 12, w: 40, h: 15 }));
+  $('sg-add-date').addEventListener('click', () => sgAdd({ type: 'text', text: new Date().toLocaleDateString('ru-RU'), size: 12, w: 60, h: 15 }));
+  $('sg-prev').addEventListener('click', () => { if (sg.page > 1) { sg.page--; sg.on = null; sgRender(); } });
+  $('sg-next').addEventListener('click', () => { if (sg.page < sg.n) { sg.page++; sg.on = null; sgRender(); } });
+  $('sg-done').addEventListener('click', closeSigner);
+  $('signer').addEventListener('click', e => { if (e.target === $('signer')) closeSigner(); });
+  $('queue').addEventListener('click', e => { const b = e.target.closest('[data-sign]'); if (!b || busy) return; const it = items.find(i => i.id === +b.dataset.sign); if (it) openSigner(it); });
+
+  // The signature pad: drawn with a mouse or a finger, or taken from a photo of a signature on paper
+  const sp = { ink: '#1a3a9e', drawn: false, img: null };
+  const spc = $('sp-canvas');
+  function spReset() {
+    const r = spc.getBoundingClientRect(), dpr = Math.min(3, window.devicePixelRatio || 1);
+    spc.width = Math.round((r.width || 600) * dpr); spc.height = Math.round((r.height || 220) * dpr);
+    const g = spc.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.lineCap = g.lineJoin = 'round'; g.lineWidth = 2.6;
+    sp.drawn = false; sp.img = null;
+  }
+  $('sg-add-sig').addEventListener('click', () => { $('sigpad').hidden = false; requestAnimationFrame(spReset); });
+  $('sp-close').addEventListener('click', () => { $('sigpad').hidden = true; });
+  $('sp-clear').addEventListener('click', spReset);
+  document.querySelectorAll('[data-ink]').forEach(b => b.addEventListener('click', () => { sp.ink = b.dataset.ink; document.querySelectorAll('[data-ink]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); }));
+  spc.addEventListener('pointerdown', e => {
+    e.preventDefault(); try { spc.setPointerCapture(e.pointerId); } catch {}
+    const g = spc.getContext('2d'), r = spc.getBoundingClientRect();
+    let px = e.clientX - r.left, py = e.clientY - r.top;
+    g.strokeStyle = g.fillStyle = sp.ink; g.beginPath(); g.arc(px, py, 1.3, 0, 7); g.fill();
+    const mv = ev => {
+      const pts = ev.getCoalescedEvents ? ev.getCoalescedEvents() : [];
+      for (const p of pts.length ? pts : [ev]) {
+        const x = p.clientX - r.left, y = p.clientY - r.top;
+        g.beginPath(); g.moveTo(px, py); g.quadraticCurveTo(px, py, (px + x) / 2, (py + y) / 2); g.lineTo(x, y); g.stroke(); px = x; py = y;
+      }
+      sp.drawn = true;
+    };
+    const up = () => { spc.removeEventListener('pointermove', mv); spc.removeEventListener('pointerup', up); spc.removeEventListener('pointercancel', up); };
+    spc.addEventListener('pointermove', mv); spc.addEventListener('pointerup', up); spc.addEventListener('pointercancel', up);
+    sp.drawn = true;
+  });
+  // A photo of a signature: the paper is removed by colour, then the ink is drawn onto the pad
+  $('sp-file').addEventListener('change', async e => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    let d; try { d = await decodeImage(f, extOf(f.name)); } catch { toast('Не удалось открыть фото подписи.'); return; }
+    try {
+      const c = drawImage(d, false, 1600);
+      colorCut(c, null, 30, 'all', true);
+      spReset();
+      const r = spc.getBoundingClientRect(), k = Math.min(r.width / c.width, r.height / c.height) * 0.92;
+      spc.getContext('2d').drawImage(c, (r.width - c.width * k) / 2, (r.height - c.height * k) / 2, c.width * k, c.height * k);
+      sp.drawn = true;
+    } finally { d.done(); }
+  });
+  // Only the inked part of the pad is kept
+  function trimmed(c) {
+    const g = c.getContext('2d'), d = g.getImageData(0, 0, c.width, c.height).data;
+    let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
+    for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3] > 12) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (x1 < 0) return null;
+    const pad = 4, w = x1 - x0 + 1 + pad * 2, h = y1 - y0 + 1 + pad * 2, o = document.createElement('canvas'); o.width = w; o.height = h;
+    o.getContext('2d').drawImage(c, x0 - pad, y0 - pad, w, h, 0, 0, w, h);
+    return o;
+  }
+  $('sp-ok').addEventListener('click', () => {
+    const t = sp.drawn ? trimmed(spc) : null;
+    if (!t) { toast('Сначала распишитесь или загрузите фото подписи.'); return; }
+    $('sigpad').hidden = true;
+    const w = Math.min(170, sg.W * 0.35);
+    sgAdd({ type: 'img', src: t.toDataURL('image/png'), w, h: w * t.height / t.width });
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (!$('sigpad').hidden) $('sigpad').hidden = true; else if (!$('signer').hidden && !e.target.closest('.txt')) closeSigner();
+  });
+  // Text is drawn into a picture at 4× (about 290 dpi), the same font and line height as on screen
+  function textPng(m) {
+    const K = 4, c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(m.w * K)); c.height = Math.max(1, Math.ceil(m.h * K));
+    const g = c.getContext('2d'); g.fillStyle = '#111'; g.font = `${m.size * K}px Arial, Helvetica, sans-serif`; g.textBaseline = 'middle';
+    const lh = m.size * 1.25 * K;
+    m.text.split('\n').forEach((line, i) => g.fillText(line, 0, lh * i + lh / 2));
+    return c.toDataURL('image/png');
+  }
+  async function signPdf(it) {
+    const L = window.PDFLib;
+    const out = await L.PDFDocument.load(await it.file.arrayBuffer());
+    const view = await openPdf(it.file);
+    try {
+      const pages = out.getPages();
+      for (const m of it.marks) {
+        if (m.type === 'text' && !m.text.trim()) continue;
+        const vp = (await view.getPage(m.page)).getViewport({ scale: 1 });
+        const png = await out.embedPng(m.type === 'img' ? m.src : textPng(m));
+        // The bottom-left corner on screen, in the page's own coordinates; turned pages turn the picture back upright
+        const [x, y] = vp.convertToPdfPoint(m.x, m.y + m.h);
+        pages[m.page - 1].drawImage(png, { x, y, width: m.w, height: m.h, rotate: L.degrees(vp.rotation) });
+      }
+    } finally { view.destroy(); }
+    return new Blob([await out.save()], { type: 'application/pdf' });
+  }
+  async function runSign(todo) {
+    await need('pdflib');
+    for (const it of todo.filter(i => i.kind === 'pdf')) {
+      if (stopRequested) { it.status = 'error'; it.note = 'Остановлено'; continue; }
+      if (!it.marks || !it.marks.length) { it.status = 'skip'; it.note = 'Нажмите «Разместить» и добавьте подпись, текст или дату'; continue; }
+      it.status = 'working'; it.note = ''; renderQueue(); await tick();
+      try {
+        addResult({ name: `${baseOf(it.file.name)}${WORD('-подписан')}.pdf`, blob: await raceStop(signPdf(it)) }, undefined, true);
+        renderResults(); it.status = 'done'; it.note = '';
+      } catch (e) { console.error(e); it.status = 'error'; it.note = friendly(e); }
+      renderQueue();
+    }
+  }
+  // ---------- Watermark and page numbers, for PDF pages and for photos ----------
+  const stampExt = it => (['jpg', 'png', 'webp'].includes(normExt(it.ext)) ? normExt(it.ext) : 'png');
+  // The watermark text as a picture: bold, grey, drawn large so it stays sharp when printed
+  function wmPng(text, px, color) {
+    const c = document.createElement('canvas'), g = c.getContext('2d'), font = `bold ${px}px Arial, Helvetica, sans-serif`;
+    g.font = font; const w = Math.ceil(g.measureText(text).width) + px * 0.2, h = Math.ceil(px * 1.3);
+    c.width = Math.max(1, w); c.height = h;
+    g.font = font; g.fillStyle = color; g.textBaseline = 'middle'; g.fillText(text, px * 0.1, h / 2);
+    return c;
+  }
+  // Where the copies of the watermark go on a page of W x H (as it is seen), as centres, box sizes and an angle (degrees, counterclockwise)
+  function wmSpots(W, H, ratio) {
+    const diag = Math.hypot(W, H);
+    if (opts.wmMode === 'corner') { const w = Math.min(W * 0.32, H * 0.32 / ratio * 3); return [{ cx: W - w / 2 - W * 0.04, cy: H - (w * ratio) / 2 - H * 0.03, w, h: w * ratio, a: 0 }]; }
+    if (opts.wmMode === 'diag') { const a = Math.atan2(H, W) * 180 / Math.PI, w = diag * 0.7; return [{ cx: W / 2, cy: H / 2, w, h: w * ratio, a }]; }
+    const w = Math.max(W, H) * 0.28, h = w * ratio, out = [], stepX = w * 1.25, stepY = h * 3.2;
+    for (let y = -stepY / 2, row = 0; y < H + stepY; y += stepY, row++) for (let x = (row % 2) * stepX / 2 - stepX / 2; x < W + stepX; x += stepX) out.push({ cx: x, cy: y, w, h, a: 30 });
+    return out;
+  }
+  async function stampPdf(it) {
+    const L = window.PDFLib;
+    const doc = await L.PDFDocument.load(await it.file.arrayBuffer());
+    const view = await openPdf(it.file);
+    try {
+      const text = opts.wmText.trim(), op = opts.wmOpacity / 100;
+      const mark = text ? wmPng(text, 160, opts.wmMode === 'corner' ? '#333333' : '#7a7a7a') : null;
+      const png = mark ? await doc.embedPng(mark.toDataURL('image/png')) : null;
+      const font = opts.pnum ? await doc.embedFont(L.StandardFonts.Helvetica) : null;
+      const pages = doc.getPages(), N = pages.length;
+      for (let i = 0; i < N; i++) {
+        if (stopRequested) throw new Stopped();
+        if (i % 10 === 9) { setNote(it, `страница ${i + 1} из ${N}`); await tick(); }
+        const vp = (await view.getPage(i + 1)).getViewport({ scale: 1 }), R = vp.rotation;
+        // Everything is placed on the page as it is seen, then turned into the page's own coordinates
+        const put = (cx, cy, w, h, a) => {
+          const [px, py] = vp.convertToPdfPoint(cx, cy), t = (R + a) * Math.PI / 180;
+          return { x: px - (w / 2 * Math.cos(t) - h / 2 * Math.sin(t)), y: py - (w / 2 * Math.sin(t) + h / 2 * Math.cos(t)), rotate: L.degrees(R + a) };
+        };
+        if (png) for (const sp of wmSpots(vp.width, vp.height, mark.height / mark.width)) pages[i].drawImage(png, { ...put(sp.cx, sp.cy, sp.w, sp.h, sp.a), width: sp.w, height: sp.h, opacity: op });
+        if (font) {
+          const label = opts.pnumFmt === 'nof' ? `${i + 1} / ${N}` : String(i + 1), size = 10, tw = font.widthOfTextAtSize(label, size);
+          const cx = opts.pnumPos === 'br' ? vp.width - 36 - tw / 2 : vp.width / 2, cy = vp.height - 22;
+          const p = put(cx, cy, tw, size * 0.7, 0);
+          pages[i].drawText(label, { x: p.x, y: p.y, size, font, color: L.rgb(0.25, 0.25, 0.25), rotate: p.rotate });
+        }
+      }
+    } finally { view.destroy(); }
+    return new Blob([await doc.save()], { type: 'application/pdf' });
+  }
+  async function stampImage(it) {
+    const d = await decodeImage(it.file, it.ext), ext = stampExt(it);
+    try {
+      const c = drawImage(d, ext === 'jpg', 0), g = c.getContext('2d'), text = opts.wmText.trim();
+      const mark = wmPng(text, Math.max(40, Math.round(Math.max(c.width, c.height) / 8)), '#ffffff');
+      g.globalAlpha = opts.wmOpacity / 100;
+      for (const sp of wmSpots(c.width, c.height, mark.height / mark.width)) {
+        g.save(); g.translate(sp.cx, sp.cy); g.rotate(-sp.a * Math.PI / 180);
+        // white text with a thin dark edge shows on light and dark photos alike
+        g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = sp.h * 0.06;
+        g.drawImage(mark, -sp.w / 2, -sp.h / 2, sp.w, sp.h); g.restore();
+      }
+      return { name: `${baseOf(it.file.name)}${WORD('-с-водяным-знаком')}.${ext}`, blob: await encodeCanvas(c, ext, 0.92) };
+    } finally { d.done(); }
+  }
+  async function runStamp(todo) {
+    if (!opts.wmText.trim() && !opts.pnum) { toast('Впишите текст водяного знака или отметьте «Пронумеровать страницы».'); $('wm-text').focus(); return; }
+    await need('pdflib');
+    for (const it of todo) {
+      if (stopRequested) { it.status = 'error'; it.note = 'Остановлено'; continue; }
+      if (it.kind === 'image' && !opts.wmText.trim()) { it.status = 'skip'; it.note = 'У фото нет страниц: впишите текст водяного знака'; continue; }
+      it.status = 'working'; it.note = ''; renderQueue(); await tick();
+      try {
+        const out = it.kind === 'pdf' ? { name: `${baseOf(it.file.name)}${WORD(opts.wmText.trim() ? '-с-водяным-знаком' : '-с-номерами')}.pdf`, blob: await raceStop(stampPdf(it)) } : await raceStop(stampImage(it));
+        addResult(out, undefined, true); renderResults();
+        it.status = 'done'; it.note = '';
+      } catch (e) { console.error(e); it.status = 'error'; it.note = friendly(e); }
+      renderQueue();
+    }
+  }
   async function runPdfTools(todo) {
+    if (opts.ptool === 'stamp') return runStamp(todo);
+    if (opts.ptool === 'sign') return runSign(todo);
     if (opts.ptool === 'protect' || opts.ptool === 'unlock') return runPassword(todo);
     const L = await need('pdflib').then(() => window.PDFLib);
     if (opts.ptool === 'merge') {
