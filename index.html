@@ -564,6 +564,16 @@ details.more-help[open] { display: grid; gap: 8px; }
 
       <!-- Compress mode -->
       <div data-for="compress" hidden>
+        <div class="set" data-core>
+          <h3>Быстрые пресеты</h3>
+          <div class="seg words grid2" role="group" aria-label="Пресеты" id="preset">
+            <button type="button" data-p="gos">Госуслуги · до 5 МБ</button>
+            <button type="button" data-p="mail">Почта · до 25 МБ</button>
+            <button type="button" data-p="chat">Мессенджеры</button>
+            <button type="button" data-p="discord">Discord · 20 МБ</button>
+          </div>
+          <p class="hint" id="preset-hint">Пресет сам выставит настройки ниже. Их можно поправить.</p>
+        </div>
         <div class="set" data-cats="image video audio pdf" data-core>
           <h3>Сила сжатия</h3>
           <div class="seg words" role="group" aria-label="Сила сжатия" id="level">
@@ -604,6 +614,17 @@ details.more-help[open] { display: grid; gap: 8px; }
               <button type="button" data-v="720" aria-pressed="false">720p</button>
               <button type="button" data-v="480" aria-pressed="false">480p</button>
             </div>
+          </div>
+          <div class="field">
+            <span id="vlimit-label">Уложить в размер</span>
+            <div class="seg words grid2" role="group" aria-labelledby="vlimit-label" id="vlimit">
+              <button type="button" data-v="0" aria-pressed="true">Не важно</button>
+              <button type="button" data-v="20" aria-pressed="false">Discord · 20 МБ</button>
+              <button type="button" data-v="25" aria-pressed="false">Почта · 25 МБ</button>
+              <button type="button" data-v="50" aria-pressed="false">50 МБ</button>
+            </div>
+            <div class="field-row"><label for="vlimit-mb">или свой размер, МБ</label><input type="number" id="vlimit-mb" min="1" max="4000" step="1" placeholder="—" style="width:96px"></div>
+            <p class="hint">Качество подберётся так, чтобы ролик точно влез. Чем длиннее видео, тем ниже получится чёткость.</p>
           </div>
           <label class="check"><input type="checkbox" id="mute"> Убрать звук</label>
           <p class="hint">Видео пережимается кодеками вашего браузера. Быстрее всего в Chrome и Edge.</p>
@@ -1072,7 +1093,7 @@ details.more-help[open] { display: grid; gap: 8px; }
   let pixelNote = false;
 
   // ---------- Settings ----------
-  const opts = { mode: 'convert', quality: 0.9, maxSide: 0, bg: '#ffffff', page: 'fit', merge: true, dpi: 150, sep: ';', gifw: 480, giff: 12, level: 'medium', cfmt: 'same', targetKb: 0, cmax: 0, vres: 'auto', mute: false, pdfPages: '', pdfJoin: false, pack: 'auto', bgq: 'hq', bgm: 'ai', bgcm: 'auto', bgc: '#ffffff', bgtol: 25, bgarea: 'edge', bgsoft: true, bbMode: 'erase', bgnew: 'none', bgfill: '#ffffff', bgblur: 60, ptool: 'merge', prot: 90, ptPages: '', mwhat: 'all', ocr: true, wmText: '', wmMode: 'diag', wmOpacity: 25, pnum: false, pnumPos: 'bc', pnumFmt: 'n' };
+  const opts = { mode: 'convert', quality: 0.9, maxSide: 0, bg: '#ffffff', page: 'fit', merge: true, dpi: 150, sep: ';', gifw: 480, giff: 12, level: 'medium', cfmt: 'same', targetKb: 0, cmax: 0, vres: 'auto', mute: false, pdfPages: '', pdfJoin: false, pack: 'auto', bgq: 'hq', bgm: 'ai', bgcm: 'auto', bgc: '#ffffff', bgtol: 25, bgarea: 'edge', bgsoft: true, bbMode: 'erase', bgnew: 'none', bgfill: '#ffffff', bgblur: 60, ptool: 'merge', prot: 90, ptPages: '', mwhat: 'all', ocr: true, wmText: '', wmMode: 'diag', wmOpacity: 25, pnum: false, pnumPos: 'bc', pnumFmt: 'n', vlimit: 0 };
   const store = {
     get() { try { return JSON.parse(localStorage.getItem('formater-opts') || 'null'); } catch { return null; } },
     set(v) { try { localStorage.setItem('formater-opts', JSON.stringify(v)); } catch {} },
@@ -1106,6 +1127,24 @@ details.more-help[open] { display: grid; gap: 8px; }
   bindSeg('level', 'level', String, () => { levelHints(); });
   bindSeg('cfmt', 'cfmt', String, () => renderQueue());
   bindSeg('vres', 'vres', String);
+  bindSeg('vlimit', 'vlimit', Number, () => { $('vlimit-mb').value = ''; });
+  $('vlimit-mb').value = [0, 20, 25, 50].includes(opts.vlimit) ? '' : opts.vlimit || '';
+  $('vlimit-mb').addEventListener('input', e => { const v = Math.max(0, parseInt(e.target.value, 10) || 0); opts.vlimit = v; store.set(opts); syncers.forEach(f => f()); $('vlimit-mb').value = v || ''; });
+  syncers.push(() => { if ([0, 20, 25, 50].includes(opts.vlimit)) $('vlimit-mb').value = ''; });
+  // Presets: several settings at once, for the usual places files go
+  const PRESETS = {
+    gos: { set: { level: 'medium', targetKb: 5000, cfmt: 'jpg', cmax: 0, vlimit: 0 }, hint: 'Фото и PDF уложатся в 5 МБ, фото в JPG. У разных услуг лимит бывает другим: если на странице указан свой, впишите его в «Уложить в размер, КБ».' },
+    mail: { set: { level: 'medium', targetKb: 0, cfmt: 'same', cmax: 0, vlimit: 25 }, hint: 'Видео уложится в 25 МБ: столько принимает почта (Gmail, Яндекс, Mail.ru) во вложении. Фото и PDF сожмутся средне.' },
+    chat: { set: { level: 'strong', targetKb: 0, cfmt: 'jpg', cmax: 1600, vres: '720', vlimit: 0 }, hint: 'Лёгкие файлы для отправки в чат: фото до 1600 px в JPG, видео в 720p.' },
+    discord: { set: { level: 'medium', targetKb: 0, cfmt: 'same', cmax: 0, vlimit: 20 }, hint: 'Видео уложится в 20 МБ: это лимит Discord без подписки (с Nitro Basic 50 МБ).' },
+  };
+  $('preset').addEventListener('click', e => {
+    const b = e.target.closest('[data-p]'); if (!b) return;
+    const P = PRESETS[b.dataset.p]; Object.assign(opts, P.set); store.set(opts);
+    syncers.forEach(f => f()); levelHints(); $('preset-hint').textContent = P.hint;
+    $('preset').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    resetDone(); renderQueue();
+  });
   bindSeg('pack', 'pack', String);
   bindSeg('ptool', 'ptool', String, () => { ptoolUi(); setGoLabel(); resetDone(); renderQueue(); });
   bindSeg('prot', 'prot', Number);
@@ -1551,6 +1590,7 @@ details.more-help[open] { display: grid; gap: 8px; }
       ] },
       video: { title: 'Видео', items: [
         'Сильнее всего на вес влияет разрешение: 720p вместо 1080p почти вдвое легче.',
+        'Нужно влезть в лимит, например 20 МБ для Discord или 25 МБ для почты: выберите «Уложить в размер», качество подберётся само.',
         'Для мессенджеров ставьте «Сильно», для архива «Слабо».',
         'Если звук не нужен, отметьте «Убрать звук».',
         'Лишнее можно отрезать ножницами перед сжатием.',
@@ -4643,6 +4683,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   }
   async function compressVideo(item, out) {
     needVideoApi();
+    if (opts.vlimit) return videoToSize(item, out, opts.vlimit);
     const M = await media();
     const L = LEVELS[opts.level];
     const cap = opts.vres === 'auto' ? L.vres : +opts.vres;
@@ -4661,6 +4702,42 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       return v;
     }, opts.mute ? { discard: true } : { ...pref.a, bitrate: Math.min(128000, LEVELS[opts.level].kbps * 1000) }, false);
     return { name: `${baseOf(item.file.name)}.${out}`, blob };
+  }
+  // A video that must fit a size: the bitrate comes from the duration, the picture size from the bitrate.
+  // Encoders don't hit a bitrate exactly, so a result that comes out too big is made again a little smaller
+  async function videoToSize(item, out, mb) {
+    const M = await media();
+    const pref = await compatCodecs(out);
+    const tr = activeTrim(item);
+    let dur = item.dur;
+    if (!dur) { const inp = new M.Input({ source: new M.BlobSource(item.file), formats: M.ALL_FORMATS }); try { dur = await inp.computeDuration(); } finally { inp.dispose && inp.dispose(); } }
+    if (tr) dur = (tr.end == null ? dur : tr.end) - tr.start;
+    if (!dur || !isFinite(dur)) throw new Error('Не удалось узнать длину видео.');
+    const limit = mb * 1024 * 1024;
+    if (item.file.size <= limit * 0.97 && !tr) return { name: `${baseOf(item.file.name)}.${out}`, blob: item.file, fits: true };
+    const total = limit * 8 * 0.95 / dur; // bits per second for everything, with room for the container
+    const audio = opts.mute ? 0 : total < 300000 ? 48000 : total < 1200000 ? 64000 : 96000;
+    let video = total - audio;
+    if (video < 60000) throw new Error(`В ${mb} МБ этот ролик не влезет даже в плохом качестве: он слишком длинный. Обрежьте его или выберите размер больше.`);
+    let blob = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (stopRequested) throw new Stopped();
+      const v = video;
+      // Fewer bits → smaller picture, so it stays sharp rather than blocky
+      const cap = v > 4e6 ? 1080 : v > 1.6e6 ? 720 : v > 7e5 ? 480 : v > 3e5 ? 360 : 240;
+      const userCap = opts.vres === 'auto' ? 0 : +opts.vres;
+      blob = await mediaJob(item, out, async vt => {
+        const o = { ...pref.v, bitrate: Math.max(50000, Math.round(v)) };
+        let w = vt.displayWidth, h = vt.displayHeight;
+        const short = Math.min(w, h), want = Math.min(cap, userCap || cap);
+        if (short > want) { const k = want / short; w = Math.round(w * k / 2) * 2; h = Math.round(h * k / 2) * 2; Object.assign(o, { width: w, height: h, fit: 'fill' }); }
+        return o;
+      }, opts.mute ? { discard: true } : { ...pref.a, bitrate: audio }, false);
+      if (blob.size <= limit) break;
+      setNote(item, `не влезло (${fmtSize(blob.size)}), пробую меньше`);
+      video = video * (limit / blob.size) * 0.9;
+    }
+    return { name: `${baseOf(item.file.name)}.${out}`, blob, over: blob.size > limit };
   }
   async function compressAudio(item) {
     const blob = await mediaJob(item, 'mp3', null, { bitrate: LEVELS[opts.level].kbps * 1000 }, false);
@@ -4769,6 +4846,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
           : it.kind === 'video' ? compressVideo(it, plan.out)
           : compressAudio(it));
         const pct = Math.round((1 - out.blob.size / it.file.size) * 100);
+        if (out.fits) { it.status = 'skip'; it.note = `Уже меньше ${opts.vlimit} МБ, сжимать не нужно`; renderQueue(); continue; }
         if (out.blob.size >= it.file.size * 0.98 && normExt(it.ext) === plan.out) {
           it.status = 'skip';
           it.note = it.kind === 'pdf' ? (out.pics ? 'Картинки в PDF уже сжаты, сильнее не получается. Попробуйте силу «Сильно».' : 'В PDF почти нет картинок: текст и так весит мало, сжимать нечего.') : 'Файл уже сжат, сильнее не получается. Попробуйте силу «Сильно».';
@@ -4776,6 +4854,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
           addResult(out, it.file.size);
           it.status = 'done'; it.note = pct > 0 ? `−${pct}%` : fmtSize(out.blob.size);
           if (opts.targetKb && (it.kind === 'image' || it.kind === 'pdf') && out.blob.size > opts.targetKb * 1024) it.note += `, в ${opts.targetKb} КБ не влезло`;
+          if (it.kind === 'video' && opts.vlimit) it.note = out.over ? `${fmtSize(out.blob.size)}: в ${opts.vlimit} МБ не влезло, обрежьте ролик` : `${fmtSize(out.blob.size)}, влезает в ${opts.vlimit} МБ`;
         }
       } catch (e) { console.error(e); it.status = 'error'; it.note = friendly(e); }
       renderQueue();
