@@ -259,6 +259,17 @@ table.matrix { width: 100%; border-collapse: collapse; font-size: 14px; }
 .ink { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line); cursor: pointer; padding: 0; }
 .ink[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 
+/* Brush: touch up the cut-out by hand */
+.bb-stage { overflow: auto; padding: 14px; min-height: 0; background: var(--sunken); display: grid; place-items: center; }
+.bb-wrap { position: relative; line-height: 0; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 6px rgb(0 0 0 / .2); }
+.bb-wrap canvas { display: block; width: 100%; height: 100%; }
+.bb-wrap canvas + canvas { position: absolute; inset: 0; touch-action: none; cursor: none; }
+.bb-cursor { position: absolute; border: 1.5px solid #fff; box-shadow: 0 0 0 1px rgb(0 0 0 / .6); border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); display: none; }
+.bb-foot { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; padding: 12px 16px; border-top: 1px solid var(--line); }
+.bb-foot .seg { min-width: 200px; }
+.bb-foot .grow { flex: 1 1 160px; display: grid; gap: 2px; }
+.bb-msg { color: var(--muted); font-size: 14px; display: flex; gap: 8px; align-items: center; padding: 40px 10px; line-height: 1.4; }
+
 /* Off-screen sheet used to lay out documents before they become PDF pages */
 .render-host { position: absolute; left: -12000px; top: 0; width: 794px; padding: 0 72px; background: #fff; color: #16181d; font-family: "Golos Text", Arial, sans-serif; font-size: 14px; line-height: 1.6; }
 .render-host img { max-width: 100%; height: auto; }
@@ -716,6 +727,26 @@ details.more-help[open] { display: grid; gap: 8px; }
           </div>
           <label class="check"><input type="checkbox" id="bgsoft" checked> Сгладить края и убрать цветную кайму. Для пиксель-арта и иконок выключите.</label>
         </div>
+        <div class="set">
+          <h3>Новый фон</h3>
+          <div class="seg words grid2" role="group" aria-label="Новый фон" id="bgnew">
+            <button type="button" data-v="none" aria-pressed="true">Прозрачный</button>
+            <button type="button" data-v="color" aria-pressed="false">Цвет</button>
+            <button type="button" data-v="blur" aria-pressed="false">Размыть</button>
+            <button type="button" data-v="image" aria-pressed="false">Картинка</button>
+          </div>
+          <div class="field-row" id="bgfill-row" hidden><label for="bgfill">Цвет фона</label><input type="color" id="bgfill" value="#ffffff"></div>
+          <div class="field" id="bgblur-row" hidden>
+            <div class="field-row"><label for="bgblur">Сила размытия</label><output id="bgblur-out">60</output></div>
+            <input type="range" id="bgblur" min="0" max="100" step="1" value="60">
+          </div>
+          <div class="field" id="bgimg-row" hidden>
+            <label class="btn small" for="bgimg" style="cursor:pointer;justify-self:start">Выбрать картинку для фона</label>
+            <input type="file" id="bgimg" accept="image/*" hidden>
+            <span class="hint" id="bgimg-name">Картинка не выбрана</span>
+          </div>
+          <p class="hint" id="bgnew-hint"></p>
+        </div>
         <div class="set" id="bg-ai-set">
           <h3>Нейросеть</h3>
           <div class="field">
@@ -818,6 +849,32 @@ details.more-help[open] { display: grid; gap: 8px; }
         <button class="btn primary" id="sp-ok" type="button" style="margin-left:auto">Поставить</button>
       </div>
       <p class="hint">Распишитесь мышкой или пальцем. Можно сфотографировать подпись на белой бумаге: фон уберётся сам.</p>
+    </div>
+  </div>
+</div>
+
+<div class="picker" id="brush" role="dialog" aria-modal="true" aria-labelledby="bb-title" hidden>
+  <div class="picker-box sg-box">
+    <div class="picker-head">
+      <h2 id="bb-title">Доработать вырезку</h2>
+      <div class="sg-tools">
+        <button class="btn small" id="bb-undo" type="button" disabled>Отменить</button>
+        <button class="btn small" id="bb-reset" type="button">Начать заново</button>
+        <button class="btn small" id="bb-zoom" type="button">Крупнее</button>
+        <button class="icon-btn" id="bb-close" type="button" aria-label="Закрыть без сохранения"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+      </div>
+    </div>
+    <div class="bb-stage" id="bb-stage"></div>
+    <div class="bb-foot">
+      <div class="seg words" role="group" aria-label="Кисть" id="bb-mode">
+        <button type="button" data-v="erase" aria-pressed="true">Стереть</button>
+        <button type="button" data-v="restore" aria-pressed="false">Вернуть</button>
+      </div>
+      <div class="grow">
+        <div class="field-row"><label for="bb-size">Размер кисти</label><output id="bb-size-out">40</output></div>
+        <input type="range" id="bb-size" min="4" max="160" step="1" value="40">
+      </div>
+      <button class="btn primary" id="bb-done" type="button">Сохранить правки</button>
     </div>
   </div>
 </div>
@@ -1015,7 +1072,7 @@ details.more-help[open] { display: grid; gap: 8px; }
   let pixelNote = false;
 
   // ---------- Settings ----------
-  const opts = { mode: 'convert', quality: 0.9, maxSide: 0, bg: '#ffffff', page: 'fit', merge: true, dpi: 150, sep: ';', gifw: 480, giff: 12, level: 'medium', cfmt: 'same', targetKb: 0, cmax: 0, vres: 'auto', mute: false, pdfPages: '', pdfJoin: false, pack: 'auto', bgq: 'hq', bgm: 'ai', bgcm: 'auto', bgc: '#ffffff', bgtol: 25, bgarea: 'edge', bgsoft: true, ptool: 'merge', prot: 90, ptPages: '', mwhat: 'all', ocr: true, wmText: '', wmMode: 'diag', wmOpacity: 25, pnum: false, pnumPos: 'bc', pnumFmt: 'n' };
+  const opts = { mode: 'convert', quality: 0.9, maxSide: 0, bg: '#ffffff', page: 'fit', merge: true, dpi: 150, sep: ';', gifw: 480, giff: 12, level: 'medium', cfmt: 'same', targetKb: 0, cmax: 0, vres: 'auto', mute: false, pdfPages: '', pdfJoin: false, pack: 'auto', bgq: 'hq', bgm: 'ai', bgcm: 'auto', bgc: '#ffffff', bgtol: 25, bgarea: 'edge', bgsoft: true, bbMode: 'erase', bgnew: 'none', bgfill: '#ffffff', bgblur: 60, ptool: 'merge', prot: 90, ptPages: '', mwhat: 'all', ocr: true, wmText: '', wmMode: 'diag', wmOpacity: 25, pnum: false, pnumPos: 'bc', pnumFmt: 'n' };
   const store = {
     get() { try { return JSON.parse(localStorage.getItem('formater-opts') || 'null'); } catch { return null; } },
     set(v) { try { localStorage.setItem('formater-opts', JSON.stringify(v)); } catch {} },
@@ -1119,8 +1176,27 @@ details.more-help[open] { display: grid; gap: 8px; }
   $('bgc').addEventListener('input', e => { opts.bgc = e.target.value; store.set(opts); bgRedo(); });
   $('bgtol').addEventListener('input', e => { opts.bgtol = +e.target.value; $('bgtol-out').textContent = e.target.value; store.set(opts); });
   $('bgsoft').addEventListener('change', e => { opts.bgsoft = e.target.checked; store.set(opts); });
-  syncers.push(bgqUi);
-  bgqUi();
+  const BGNEW_HINT = {
+    none: 'Результат в PNG с прозрачным фоном: его можно положить на что угодно.',
+    color: 'Фон зальётся цветом, результат в JPG. Белый подходит для маркетплейсов и документов.',
+    blur: 'Остаётся свой фон, но размытый, как портретный режим в телефоне. Результат в JPG.',
+    image: 'Предмет ляжет на вашу картинку, она растянется на весь кадр. Результат в JPG.',
+  };
+  function bgnewUi() {
+    $('bgfill-row').hidden = opts.bgnew !== 'color'; $('bgblur-row').hidden = opts.bgnew !== 'blur'; $('bgimg-row').hidden = opts.bgnew !== 'image';
+    $('bgfill').value = opts.bgfill; $('bgblur').value = opts.bgblur; $('bgblur-out').textContent = opts.bgblur;
+    $('bgnew-hint').textContent = BGNEW_HINT[opts.bgnew] || '';
+  }
+  bindSeg('bgnew', 'bgnew', String, () => { bgnewUi(); bgRedo(); });
+  $('bgfill').addEventListener('input', e => { opts.bgfill = e.target.value; store.set(opts); });
+  $('bgblur').addEventListener('input', e => { opts.bgblur = +e.target.value; $('bgblur-out').textContent = e.target.value; store.set(opts); });
+  $('bgimg').addEventListener('change', async e => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    try { const d = await decodeImage(f, extOf(f.name)); const c = drawImage(d, true, 4096); d.done(); if (bgPhoto && bgPhoto.bmp.close) bgPhoto.bmp.close(); bgPhoto = { name: f.name, bmp: c }; $('bgimg-name').textContent = f.name; }
+    catch { toast('Не удалось открыть эту картинку.'); }
+  });
+  syncers.push(bgqUi, bgnewUi);
+  bgqUi(); bgnewUi();
   const MW_HINT = {
     all: 'Удаляется всё: место, дата, камера, автор, программа и описание. Фото не пережимаются, качество не меняется. Поворот фото и цветовой профиль остаются, чтобы картинка выглядела как раньше.',
     gps: 'Удаляется только место съёмки: координаты, город и страна. Дата и камера остаются, чтобы галерея сортировала фото как раньше. Работает для фото и видео.',
@@ -1308,7 +1384,8 @@ details.more-help[open] { display: grid; gap: 8px; }
         else if (bgMode) {
           const pick = opts.bgm === 'color' && opts.bgcm === 'pick'
             ? `<button class="icon-btn swatch-btn" type="button" data-pick="${it.id}" style="--c:${esc(it.bgc || opts.bgc)}" title="Пипетка: выбрать фон на этом фото" aria-label="Пипетка для ${esc(it.file.name)}"${busy ? ' disabled' : ''}><i></i>Пипетка</button>` : '';
-          right = `<div class="to">${pick}<span class="squeeze">убрать фон, сохранить в</span>${chip('png', 'image')}</div>`;
+          const fix = `<button class="btn small" type="button" data-brush="${it.id}" title="Кисть: стереть лишнее или вернуть потерянное"${busy ? ' disabled' : ''}>${it.bgEdit ? 'Доработано ✓' : 'Доработать'}</button>`;
+          right = `<div class="to">${pick}${fix}<span class="squeeze">сохранить в</span>${chip(bgOutExt(), 'image')}</div>`;
         }
         else if (pdfMode && !pdfOk(it)) status = `<span class="status-warn">${it.kind === 'image' ? 'Картинки можно только объединять' : 'В этой вкладке только PDF и картинки'}</span>`;
         else if (pdfMode) {
@@ -1448,7 +1525,8 @@ details.more-help[open] { display: grid; gap: 8px; }
         ['Мелкие детали вроде волос и шерсти у этой модели получаются хуже. Для таких фото выберите «Точнее» или «Максимум».', () => opts.bgm === 'ai' && opts.bgq === 'fast'],
         ['Если нейросеть путает фон и предмет, а фон однотонный, переключитесь на «По цвету»: пипеткой укажите фон и сразу увидите результат.', () => opts.bgm === 'ai'],
         ['Остался ореол или тень: прибавьте допуск. Пропала часть предмета: убавьте допуск или выберите «Фон от краёв».', () => opts.bgm === 'color'],
-        'Чтобы залить фон цветом, откройте PNG в любом редакторе или переведите его в JPG на вкладке «Конвертировать»: фон возьмётся из настроек.',
+        'Новый фон: цвет, размытие как в портретном режиме или своя картинка. Настройка «Новый фон» справа.',
+        'Если вырезка где-то ошиблась, нажмите «Доработать» у фото: кистью можно стереть лишнее или вернуть потерянное.',
       ] },
     },
     trim: {
@@ -3254,17 +3332,18 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     if (it) openPicker(it, false);
   });
 
-  async function removeBackground(item, onProgress) {
+  // Step 1: the cut-out. Returns the photo's own pixels and the cut-out pixels (with transparency), same size
+  async function bgCutOut(item, onProgress) {
     let d;
     try { d = await decodeImage(item.file, item.ext); }
     catch { throw new Error('Не удалось открыть фото: файл повреждён или этот формат не поддерживается браузером.'); }
     try {
-      const name = `${baseOf(item.file.name)}${WORD('-без-фона')}.png`;
       if (opts.bgm === 'color') {
         const c = drawImage(d, false, COARSE ? 3072 : 4096);
+        const orig = c.getContext('2d').getImageData(0, 0, c.width, c.height).data.slice();
         await tick();
         colorCut(c, bgColorOf(item), opts.bgtol, opts.bgarea, opts.bgsoft);
-        return { name, blob: await encodeCanvas(c, 'png'), simple: false };
+        return { W: c.width, H: c.height, orig, cut: c.getContext('2d').getImageData(0, 0, c.width, c.height).data, simple: false };
       }
       const c = drawImage(d, false, 2048);
       const W = c.width, H = c.height;
@@ -3283,12 +3362,171 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
         alpha = simpleMask(c);
         if (!bgNote) { bgNote = true; toast('Нейросеть не запустилась на этом устройстве, поэтому фон убран по цвету у краёв. Это хорошо работает на однотонном фоне.'); }
       }
-      const ctx = c.getContext('2d'), img = ctx.getImageData(0, 0, W, H);
-      for (let i = 0; i < W * H; i++) img.data[i * 4 + 3] = Math.round(img.data[i * 4 + 3] * alpha[i]);
-      ctx.putImageData(img, 0, 0);
-      return { name, blob: await encodeCanvas(c, 'png'), simple };
+      const orig = c.getContext('2d').getImageData(0, 0, W, H).data, cut = orig.slice();
+      for (let i = 0; i < W * H; i++) cut[i * 4 + 3] = Math.round(cut[i * 4 + 3] * alpha[i]);
+      // Edge pixels are part subject, part old background: the background's share is taken out,
+      // so no outline of the old colour shows on a new background
+      await tick();
+      const B = bgOnlyBlur(W, H, orig, cut, Math.max(8, Math.round(Math.max(W, H) / 120))).getContext('2d').getImageData(0, 0, W, H).data;
+      for (let i = 0; i < W * H; i++) {
+        const j = i * 4, a = cut[j + 3] / 255;
+        if (a <= 0.02 || a >= 0.98) continue;
+        for (let k = 0; k < 3; k++) cut[j + k] = Math.min(255, Math.max(0, (orig[j + k] - (1 - a) * B[j + k]) / a));
+      }
+      return { W, H, orig, cut, simple };
     } finally { d.done(); }
   }
+  // Step 2: the new background under the cut-out, if one is chosen
+  let bgPhoto = null; // the picture chosen as the new background: { name, bmp }
+  const bgOutExt = () => (opts.bgnew === 'none' ? 'png' : 'jpg');
+  function bgBackdrop(W, H, orig, cut) {
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const g = c.getContext('2d');
+    if (opts.bgnew === 'color') { g.fillStyle = opts.bgfill; g.fillRect(0, 0, W, H); }
+    else if (opts.bgnew === 'image' && bgPhoto) {
+      // cover: fill the whole frame, the middle of the picture kept
+      const b = bgPhoto.bmp, k = Math.max(W / b.width, H / b.height), w = b.width * k, h = b.height * k;
+      g.imageSmoothingQuality = 'high'; g.drawImage(b, (W - w) / 2, (H - h) / 2, w, h);
+    } else if (opts.bgnew === 'blur') {
+      // Only the background is blurred: the subject is taken out first, otherwise its dark outline smears around it.
+      // Blur = shrink and enlarge (works in every browser, unlike canvas filters on Safari); transparent pixels
+      // don't count when shrinking, so the hole left by the subject fills with the colours around it
+      const f = Math.max(8, Math.round(Math.max(W, H) / (12 + 48 * (1 - opts.bgblur / 100))));
+      g.drawImage(bgOnlyBlur(W, H, orig, cut, f), 0, 0);
+    }
+    return c;
+  }
+  // The background alone (the subject taken out), blurred by a factor f; the hole under the subject is filled with
+  // the colours around it, because transparent pixels don't count when the picture is shrunk
+  function bgOnlyBlur(W, H, orig, cut, f) {
+    const bgOnly = new Uint8ClampedArray(orig);
+    if (cut) for (let i = 3; i < bgOnly.length; i += 4) bgOnly[i] = 255 - cut[i];
+    const src = document.createElement('canvas'); src.width = W; src.height = H; src.getContext('2d').putImageData(new ImageData(bgOnly, W, H), 0, 0);
+    const out = document.createElement('canvas'); out.width = W; out.height = H;
+    const g = out.getContext('2d'); g.imageSmoothingQuality = 'high';
+    // layers from the coarsest up: wherever a finer layer still has a hole, the coarser one shows through
+    for (const k of [Math.max(W, H) / 2, f * 4, f * 2, f]) {
+      const sw = Math.max(1, Math.round(W / k)), sh = Math.max(1, Math.round(H / k));
+      const sm = document.createElement('canvas'); sm.width = sw; sm.height = sh;
+      const sg = sm.getContext('2d'); sg.imageSmoothingQuality = 'high'; sg.drawImage(src, 0, 0, sw, sh);
+      const md = document.createElement('canvas'); md.width = Math.max(1, sw * 4); md.height = Math.max(1, sh * 4);
+      const mg = md.getContext('2d'); mg.imageSmoothingQuality = 'high'; mg.drawImage(sm, 0, 0, md.width, md.height);
+      g.drawImage(md, 0, 0, W, H);
+    }
+    return out;
+  }
+  async function bgCompose(item, r) {
+    const W = r.W, H = r.H, c = opts.bgnew === 'none' ? document.createElement('canvas') : bgBackdrop(W, H, r.orig, r.cut);
+    if (opts.bgnew === 'none') { c.width = W; c.height = H; }
+    const fg = document.createElement('canvas'); fg.width = W; fg.height = H;
+    fg.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(r.cut), W, H), 0, 0);
+    c.getContext('2d').drawImage(fg, 0, 0);
+    fg.width = fg.height = 0;
+    const ext = bgOutExt();
+    const name = `${baseOf(item.file.name)}${WORD(opts.bgnew === 'none' ? '-без-фона' : '-новый-фон')}.${ext}`;
+    return { name, blob: await encodeCanvas(c, ext, 0.92), simple: r.simple };
+  }
+  // Edits made with the brush are kept for the item; otherwise the cut-out is made afresh each time (it takes a lot of memory)
+  async function removeBackground(item, onProgress) {
+    const r = item.bgEdit || await bgCutOut(item, onProgress);
+    return bgCompose(item, r);
+  }
+  // ---------- Brush: erase what the cut-out kept by mistake, bring back what it lost ----------
+  const be = { it: null, r: null, img: null, fg: null, undo: null, mode: 'erase', zoom: 1, last: null, dirty: null, raf: 0 };
+  async function openBrush(it) {
+    be.it = it; be.undo = null; be.zoom = 1; $('bb-undo').disabled = true; $('bb-zoom').textContent = 'Крупнее';
+    $('bb-stage').innerHTML = '<div class="bb-msg"><span class="spin"></span> Вырезаю фон…</div>';
+    $('brush').hidden = false;
+    await brushLoad(it.bgEdit);
+  }
+  async function brushLoad(r) {
+    const it = be.it;
+    try {
+      if (!r) {
+        if (opts.bgnew === 'image' && !bgPhoto) { /* the preview simply shows no backdrop yet */ }
+        r = await bgCutOut(it, pct => { const m = $('bb-stage').querySelector('.bb-msg'); if (m && pct >= 0) m.lastChild.textContent = ` Загружаю модель ${pct}%`; });
+      }
+    } catch (e) { console.error(e); $('bb-stage').innerHTML = `<div class="bb-msg">${esc(friendly(e))}</div>`; return; }
+    if (be.it !== it) return; // closed meanwhile
+    // A working copy: closing without saving leaves the item as it was
+    be.r = { ...r, cut: new Uint8ClampedArray(r.cut) };
+    be.img = new ImageData(be.r.cut, r.W, r.H);
+    const wrap = document.createElement('div'); wrap.className = 'bb-wrap checker';
+    const back = opts.bgnew === 'none' || (opts.bgnew === 'image' && !bgPhoto) ? document.createElement('canvas') : bgBackdrop(r.W, r.H, r.orig, r.cut);
+    if (back.width !== r.W) { back.width = r.W; back.height = r.H; }
+    const fg = document.createElement('canvas'); fg.width = r.W; fg.height = r.H; fg.getContext('2d').putImageData(be.img, 0, 0);
+    const cur = document.createElement('div'); cur.className = 'bb-cursor';
+    wrap.append(back, fg, cur);
+    $('bb-stage').innerHTML = ''; $('bb-stage').appendChild(wrap);
+    be.fg = fg; be.wrap = wrap; be.cur = cur;
+    brushFit();
+    brushBind(fg);
+  }
+  function brushFit() {
+    const st = $('bb-stage'), r = be.r; if (!r || !be.wrap) return;
+    const aw = Math.max(200, st.clientWidth - 30), ah = Math.max(200, st.clientHeight - 30), k = Math.min(aw / r.W, ah / r.H) * be.zoom;
+    be.wrap.style.width = `${r.W * k}px`; be.wrap.style.height = `${r.H * k}px`;
+  }
+  function brushPaint(x, y, rad) {
+    const r = be.r, W = r.W, H = r.H, cut = r.cut, orig = r.orig, erase = be.mode === 'erase';
+    const x0 = Math.max(0, Math.floor(x - rad)), x1 = Math.min(W - 1, Math.ceil(x + rad)), y0 = Math.max(0, Math.floor(y - rad)), y1 = Math.min(H - 1, Math.ceil(y + rad));
+    const hard = rad * 0.55;
+    for (let yy = y0; yy <= y1; yy++) for (let xx = x0; xx <= x1; xx++) {
+      const d = Math.hypot(xx - x, yy - y); if (d > rad) continue;
+      let t = d <= hard ? 1 : 1 - (d - hard) / (rad - hard); t = t * t * (3 - 2 * t); // a soft edge, so the strokes don't show
+      const i = (yy * W + xx) * 4;
+      if (erase) cut[i + 3] = Math.round(cut[i + 3] * (1 - t));
+      else { const a = Math.max(cut[i + 3], Math.round(t * orig[i + 3])); if (a > cut[i + 3]) { cut[i] = orig[i]; cut[i + 1] = orig[i + 1]; cut[i + 2] = orig[i + 2]; cut[i + 3] = a; } }
+    }
+    const d = be.dirty;
+    be.dirty = d ? [Math.min(d[0], x0), Math.min(d[1], y0), Math.max(d[2], x1), Math.max(d[3], y1)] : [x0, y0, x1, y1];
+    if (!be.raf) be.raf = requestAnimationFrame(() => {
+      be.raf = 0; const [a, b, c, e] = be.dirty; be.dirty = null;
+      be.fg.getContext('2d').putImageData(be.img, 0, 0, a, b, c - a + 1, e - b + 1);
+    });
+  }
+  function brushBind(fg) {
+    const at = e => { const r = fg.getBoundingClientRect(), k = be.r.W / r.width; return { x: (e.clientX - r.left) * k, y: (e.clientY - r.top) * k, rad: +$('bb-size').value / 2 * k, sx: e.clientX - r.left, sy: e.clientY - r.top, w: r.width }; };
+    const showCur = e => { const p = at(e), sz = +$('bb-size').value; be.cur.style.display = 'block'; be.cur.style.left = `${p.sx}px`; be.cur.style.top = `${p.sy}px`; be.cur.style.width = be.cur.style.height = `${sz}px`; };
+    fg.addEventListener('pointerenter', showCur);
+    fg.addEventListener('pointerleave', () => { be.cur.style.display = 'none'; });
+    fg.addEventListener('pointermove', e => { showCur(e); });
+    fg.addEventListener('pointerdown', e => {
+      if (e.button) return; e.preventDefault(); try { fg.setPointerCapture(e.pointerId); } catch {}
+      be.undo = be.r.cut.slice(); $('bb-undo').disabled = false;
+      let p = at(e); brushPaint(p.x, p.y, p.rad); be.last = p;
+      const mv = ev => {
+        const pts = ev.getCoalescedEvents ? ev.getCoalescedEvents() : [];
+        for (const q of pts.length ? pts : [ev]) {
+          const n = at(q), dist = Math.hypot(n.x - be.last.x, n.y - be.last.y), step = Math.max(1, n.rad / 3), k = Math.ceil(dist / step);
+          for (let j = 1; j <= k; j++) brushPaint(be.last.x + (n.x - be.last.x) * j / k, be.last.y + (n.y - be.last.y) * j / k, n.rad);
+          be.last = n;
+        }
+      };
+      const up = () => { fg.removeEventListener('pointermove', mv); fg.removeEventListener('pointerup', up); fg.removeEventListener('pointercancel', up); };
+      fg.addEventListener('pointermove', mv); fg.addEventListener('pointerup', up); fg.addEventListener('pointercancel', up);
+    });
+  }
+  function closeBrush(save) {
+    if ($('brush').hidden) return;
+    $('brush').hidden = true;
+    const it = be.it;
+    if (save && it && be.r) { it.bgEdit = be.r; if (it.status !== 'working') { it.status = 'ready'; it.note = ''; } }
+    be.it = be.r = be.img = be.fg = be.wrap = be.undo = null; $('bb-stage').innerHTML = '';
+    renderQueue();
+  }
+  bindSeg('bb-mode', 'bbMode', String, () => { be.mode = opts.bbMode; });
+  be.mode = opts.bbMode || 'erase';
+  $('bb-size').addEventListener('input', e => { $('bb-size-out').textContent = e.target.value; });
+  $('bb-undo').addEventListener('click', () => { if (!be.undo) return; be.r.cut.set(be.undo); be.undo = null; $('bb-undo').disabled = true; be.fg.getContext('2d').putImageData(be.img, 0, 0); });
+  $('bb-reset').addEventListener('click', async () => { if (!be.it) return; be.it.bgEdit = null; $('bb-stage').innerHTML = '<div class="bb-msg"><span class="spin"></span> Вырезаю фон…</div>'; await brushLoad(null); });
+  $('bb-zoom').addEventListener('click', () => { be.zoom = be.zoom >= 3 ? 1 : be.zoom + 1; $('bb-zoom').textContent = be.zoom >= 3 ? 'Целиком' : 'Крупнее'; brushFit(); });
+  $('bb-done').addEventListener('click', () => closeBrush(true));
+  $('bb-close').addEventListener('click', () => closeBrush(false));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('brush').hidden) closeBrush(false); if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !$('brush').hidden) $('bb-undo').click(); });
+  $('queue').addEventListener('click', e => { const b = e.target.closest('[data-brush]'); if (!b || busy) return; const it = items.find(i => i.id === +b.dataset.brush); if (it) openBrush(it); });
+  window.addEventListener('resize', () => { if (!$('brush').hidden) brushFit(); });
+
   // The "check" button: runs every step on a tiny picture and writes down what worked
   $('bg-test').addEventListener('click', async () => {
     const b = $('bg-test'); b.disabled = true;
@@ -3310,6 +3548,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     catch { const r = document.createRange(); r.selectNodeContents($('bg-diag')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); toast('Выделите отчёт и скопируйте его вручную'); }
   });
   async function runBg(todo) {
+    if (opts.bgnew === 'image' && !bgPhoto) { toast('Выберите картинку для нового фона в настройках справа.'); return; }
     for (const it of todo) {
       if (stopRequested) { it.status = 'error'; it.note = 'Остановлено'; continue; }
       it.status = 'working'; it.note = (opts.bgm === 'color' || bgSessions[opts.bgq]) ? '' : 'загружаю модель'; renderQueue();
@@ -3318,7 +3557,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
         const out = await raceStop(removeBackground(it, pct => setNote(it, pct < 0 ? (opts.bgq === 'max' ? 'считаю, это может занять до минуты' : '') : `загружаю модель ${pct}%`)));
         addResult(out, undefined, true);
         renderResults();
-        it.status = 'done'; it.note = out.simple ? 'по цвету у краёв' : '';
+        it.status = 'done'; it.note = it.bgEdit ? 'с вашими правками' : out.simple ? 'по цвету у краёв' : '';
       } catch (e) {
         console.error(e); it.status = 'error';
         const m = (e && e.message) || String(e);
