@@ -473,6 +473,11 @@ details.more-help[open] { display: grid; gap: 8px; }
           </div>
           <p class="hint" id="pdf-hint" data-cats="pdf:png,jpg"></p>
         </div>
+        <div class="set" data-cats="pdf:txt,docx image:txt,docx">
+          <h3>Распознавание текста</h3>
+          <label class="check" data-cats="pdf:txt,docx"><input type="checkbox" id="ocr" checked> Распознавать сканы: страницы без текста прочитаются как текст</label>
+          <p class="hint">Русский и английский. Один раз скачивается около 6 МБ, страница читается 5–20 секунд. Ошибки бывают, особенно в цифрах, поэтому проверяйте результат.</p>
+        </div>
         <div class="set" data-cats="pdf:png,jpg table:csv">
           <h3>Если на выходе много файлов</h3>
           <div class="seg words" role="group" aria-label="Упаковка результата" id="pack">
@@ -761,6 +766,7 @@ details.more-help[open] { display: grid; gap: 8px; }
     upng: ['upng-js@2.1.0/UPNG.js'],
     ort: ['onnxruntime-web@1.20.1/dist/ort.min.js'],
     pdflib: ['pdf-lib@1.17.1/dist/pdf-lib.min.js'],
+    tesseract: ['tesseract.js@5.1.1/dist/tesseract.min.js'],
     exifr: ['exifr@7.1.3/dist/full.umd.js'],
     mp3enc: ['@mediabunny/mp3-encoder@1.61.3/dist/bundles/mediabunny-mp3-encoder.min.js'],
   };
@@ -806,7 +812,7 @@ details.more-help[open] { display: grid; gap: 8px; }
   const LABEL = { png: 'PNG', jpg: 'JPG', webp: 'WEBP', gif: 'GIF', bmp: 'BMP', ico: 'ICO', pdf: 'PDF', mp4: 'MP4', webm: 'WEBM', mov: 'MOV', mkv: 'MKV', mp3: 'MP3', wav: 'WAV', ogg: 'OGG', m4a: 'M4A', txt: 'TXT', csv: 'CSV', xlsx: 'XLSX', ods: 'ODS', json: 'JSON', html: 'HTML', md: 'MD', docx: 'DOCX' };
   const ORDER = ['png', 'jpg', 'webp', 'gif', 'bmp', 'ico', 'pdf', 'mp4', 'webm', 'mov', 'mkv', 'mp3', 'wav', 'ogg', 'm4a', 'docx', 'xlsx', 'ods', 'csv', 'json', 'html', 'md', 'txt'];
   const MATRIX = [
-    ['Фото и картинки', ['jpg', 'png', 'webp', 'heic', 'gif', 'bmp', 'tiff', 'svg', 'avif', 'ico'], ['png', 'jpg', 'webp', 'gif', 'bmp', 'ico', 'pdf']],
+    ['Фото и картинки', ['jpg', 'png', 'webp', 'heic', 'gif', 'bmp', 'tiff', 'svg', 'avif', 'ico'], ['png', 'jpg', 'webp', 'gif', 'bmp', 'ico', 'pdf', 'docx', 'txt']],
     ['Видео', ['mp4', 'mov', 'webm', 'mkv', 'm4v', 'ts', 'ogv', '3gp'], ['mp4', 'webm', 'mov', 'mkv', 'gif', 'mp3', 'wav', 'ogg', 'm4a']],
     ['Аудио', ['mp3', 'wav', 'm4a', 'ogg', 'opus', 'flac', 'aac'], ['mp3', 'wav', 'ogg', 'm4a']],
     ['PDF', ['pdf'], ['docx', 'png', 'jpg', 'txt']],
@@ -827,7 +833,7 @@ details.more-help[open] { display: grid; gap: 8px; }
   function targetsFor(ext, kind, keepOwn = false) {
     const e = normExt(ext);
     const list = {
-      image: ['png', 'jpg', 'webp', 'gif', 'bmp', 'ico', 'pdf'],
+      image: ['png', 'jpg', 'webp', 'gif', 'bmp', 'ico', 'pdf', 'docx', 'txt'],
       video: ['mp4', 'webm', 'mov', 'mkv', 'gif', 'mp3', 'wav', 'ogg', 'm4a'],
       audio: ['mp3', 'wav', 'ogg', 'm4a'],
       pdf: ['docx', 'png', 'jpg', 'txt'],
@@ -901,7 +907,7 @@ details.more-help[open] { display: grid; gap: 8px; }
   let pixelNote = false;
 
   // ---------- Settings ----------
-  const opts = { mode: 'convert', quality: 0.9, maxSide: 0, bg: '#ffffff', page: 'fit', merge: true, dpi: 150, sep: ';', gifw: 480, giff: 12, level: 'medium', cfmt: 'same', targetKb: 0, cmax: 0, vres: 'auto', mute: false, pdfPages: '', pdfJoin: false, pack: 'auto', bgq: 'hq', bgm: 'ai', bgcm: 'auto', bgc: '#ffffff', bgtol: 25, bgarea: 'edge', bgsoft: true, ptool: 'merge', prot: 90, ptPages: '', mwhat: 'all' };
+  const opts = { mode: 'convert', quality: 0.9, maxSide: 0, bg: '#ffffff', page: 'fit', merge: true, dpi: 150, sep: ';', gifw: 480, giff: 12, level: 'medium', cfmt: 'same', targetKb: 0, cmax: 0, vres: 'auto', mute: false, pdfPages: '', pdfJoin: false, pack: 'auto', bgq: 'hq', bgm: 'ai', bgcm: 'auto', bgc: '#ffffff', bgtol: 25, bgarea: 'edge', bgsoft: true, ptool: 'merge', prot: 90, ptPages: '', mwhat: 'all', ocr: true };
   const store = {
     get() { try { return JSON.parse(localStorage.getItem('formater-opts') || 'null'); } catch { return null; } },
     set(v) { try { localStorage.setItem('formater-opts', JSON.stringify(v)); } catch {} },
@@ -1006,12 +1012,15 @@ details.more-help[open] { display: grid; gap: 8px; }
   $('quality').addEventListener('input', e => { opts.quality = e.target.value / 100; $('quality-out').textContent = e.target.value; store.set(opts); });
   $('bg').value = opts.bg;
   $('bg').addEventListener('input', e => { opts.bg = e.target.value; store.set(opts); });
+  $('ocr').checked = opts.ocr;
+  $('ocr').addEventListener('change', e => { opts.ocr = e.target.checked; store.set(opts); renderQueue(); });
   $('merge').checked = opts.merge;
   $('merge').addEventListener('change', e => { opts.merge = e.target.checked; store.set(opts); });
   $('mute').checked = opts.mute;
   $('mute').addEventListener('change', e => { opts.mute = e.target.checked; store.set(opts); });
   syncers.push(() => {
     $('quality').value = Math.round(opts.quality * 100); $('quality-out').textContent = $('quality').value;
+    $('ocr').checked = opts.ocr;
     $('bg').value = opts.bg; $('merge').checked = opts.merge; $('mute').checked = opts.mute;
     $('pdf-join').checked = opts.pdfJoin; $('pt-pages').value = opts.ptPages; $('pdf-pages').value = opts.pdfPages;
   });
@@ -1249,6 +1258,7 @@ details.more-help[open] { display: grid; gap: 8px; }
         'WEBP легче JPG примерно на треть, он подходит для сайтов.',
         ['Несколько картинок в PDF соберутся в один документ. Это можно выключить в настройках.', () => items.filter(i => i.kind === 'image' && i.target === 'pdf').length > 1],
         ['ICO нужен для значков сайта: картинка вписывается в квадрат до 256 px.', 'image:ico'],
+        ['Word и TXT из фото: текст на снимке распознаётся, русский и английский. Лучше всего ровный, хорошо освещённый документ или скриншот.', 'image:docx,txt'],
       ] },
       video: { title: 'Видео', items: [
         'MP4 откроется на любом устройстве. WEBM легче и хорошо работает на сайтах.',
@@ -1266,9 +1276,10 @@ details.more-help[open] { display: grid; gap: 8px; }
         ['Если страниц много, оставьте «Авто»: больше 10 картинок упакуются в один ZIP. Или склейте страницы в длинные картинки.', 'pdf:png,jpg'],
         'Нужна часть документа: впишите страницы, например 1-5, 8, 11-.',
         ['Для больших PDF берите JPG и 96–150 dpi: это быстрее и легче для памяти.', 'pdf:png,jpg'],
-        ['TXT достаёт текст. Сканы без текстового слоя переводите в картинки.', 'pdf:txt'],
+        ['TXT достаёт текст. Страницы-сканы распознаются, если включено «Распознавать сканы».', 'pdf:txt'],
         ['Word: текст, заголовки, жирный и курсив можно править, картинки переносятся. Сложная вёрстка с рамками и колонками может съехать.', 'pdf:docx'],
-        ['Сканы без текстового слоя попадут в Word картинками страниц: текст на них не редактируется.', 'pdf:docx'],
+        ['Сканы распознаются: текст можно будет править. Проверьте его глазами, особенно цифры и фамилии.', () => opts.ocr && needed('pdf:docx')],
+        ['Сканы без текстового слоя попадут в Word картинками страниц. Чтобы текст можно было править, включите «Распознавать сканы».', () => !opts.ocr && needed('pdf:docx')],
       ] },
       table: { title: 'Таблицы и данные', items: [
         ['Русский Excel открывает CSV с точкой с запятой, это настройка по умолчанию. Для программ и сайтов чаще нужна запятая.', 'table:csv'],
@@ -2042,16 +2053,19 @@ details.more-help[open] { display: grid; gap: 8px; }
     try {
       const pages = parsePages(opts.pdfPages, doc.numPages);
       const parts = [];
-      for (const n of pages) {
+      let ocred = 0;
+      for (const [k, n] of pages.entries()) {
         if (stopRequested) throw new Stopped();
         const page = await doc.getPage(n);
         // Lines are rebuilt from positions: pdf.js often gives words without the spaces between them
-        const L = await pdfPageLayout(page, false);
+        let L = await pdfPageLayout(page, false);
+        if (!L.lines.length && opts.ocr) { L = await ocrPdfPage(page, item, pages.length > 1 ? `стр. ${k + 1} из ${pages.length}: ` : ''); ocred++; }
         parts.push(pdfParas(L).map(p => p.lines.map(l => l.text).reduce(joinLine, '')).join('\n\n'));
         page.cleanup();
       }
       const text = parts.join('\n\n').trim();
-      if (!text) throw new Error('В PDF нет текстового слоя (похоже на скан). Сохраните его в PNG или JPG.');
+      if (!text) throw new Error(opts.ocr ? 'Текст на страницах не нашёлся: возможно, это фото без надписей или скан слишком бледный.' : 'В PDF нет текстового слоя (похоже на скан). Включите «Распознавать сканы» в настройках.');
+      item.pdfOcr = ocred;
       return [{ name: `${baseOf(item.file.name)}.txt`, blob: textBlob(text, 'text/plain') }];
     } finally { doc.destroy(); }
   }
@@ -2087,6 +2101,12 @@ details.more-help[open] { display: grid; gap: 8px; }
       if (size < 1) continue;
       items.push({ s: it.str, x: t[4], y: t[5], w: Math.abs(it.width) || it.str.length * size * 0.5, size, ...style(it.fontName) });
     }
+    const out = layoutFromItems(items, W, H);
+    if (withImages) out.images = await pdfPageImages(page, ops, vp, out.lines.length > 0);
+    return out;
+  }
+  // Words with positions (from a PDF's text layer or from OCR) → lines in reading order, on a page of W x H points
+  function layoutFromItems(items, W, H) {
     // Items on one baseline make a line
     items.sort((a, b) => a.y - b.y || a.x - b.x);
     const rows = [];
@@ -2149,9 +2169,7 @@ details.more-help[open] { display: grid; gap: 8px; }
       lines = rows.map(r => mkLine(r.items, r.y, L0, R0));
     }
     lines.forEach(l => { l.text = l.runs.map(r => r.t).join('').replace(/\s+$/, ''); });
-    const out = { W, H, lines: lines.filter(l => l.text.trim()), images: [] };
-    if (withImages) out.images = await pdfPageImages(page, ops, vp, out.lines.length > 0);
-    return out;
+    return { W, H, lines: lines.filter(l => l.text.trim()), images: [] };
   }
   function addRun(seg, t, it) {
     const r = seg.runs[seg.runs.length - 1], size = Math.round(it.size * 2) / 2;
@@ -2230,6 +2248,86 @@ details.more-help[open] { display: grid; gap: 8px; }
     c.width = c.height = 0;
     return out;
   }
+  // ---------- Recognising text on scans and photos: Tesseract, Russian and English (about 6 МБ, downloaded once) ----------
+  let ocrWorker = null, ocrCtx = null;
+  function ocrStart(item) {
+    if (!ocrWorker) {
+      ocrWorker = (async () => {
+        setNote(item, 'загружаю распознавание');
+        await need('tesseract');
+        // Language files live next to the site (models/ocr): no CDN needed for them, and they are kept in the browser after the first time
+        let fail;
+        const failed = new Promise((_, rej) => { fail = rej; });
+        const w = await withTimeout(Promise.race([failed, window.Tesseract.createWorker('rus+eng', 1, {
+          workerPath: CDN + 'tesseract.js@5.1.1/dist/worker.min.js', corePath: CDN + 'tesseract.js-core@5.1.1',
+          langPath: new URL('models/ocr', location.href).href,
+          errorHandler: e => fail(new Error(String(e))),
+          logger: m => {
+            const it = ocrCtx ? ocrCtx.item : item;
+            if (ocrCtx && m.status === 'recognizing text') setNote(it, `${ocrCtx.label}распознаю ${Math.round(m.progress * 100)}%`);
+            else if (!ocrCtx && /loading/.test(m.status)) setNote(it, `загружаю распознавание ${Math.round(m.progress * 100)}%`);
+          },
+        })]), 120000, 'starting OCR');
+        // Keep the spaces Tesseract sees between words; the page layout is rebuilt from word positions anyway
+        await w.setParameters({ preserve_interword_spaces: '1' });
+        return w;
+      })().catch(e => { ocrWorker = null; if (!(e instanceof Stopped)) e.message = 'Не удалось запустить распознавание текста. Проверьте интернет и попробуйте ещё раз.'; throw e; });
+    }
+    return ocrWorker;
+  }
+  function ocrAbort() { if (ocrWorker) { const w = ocrWorker; ocrWorker = null; w.then(x => x.terminate()).catch(() => {}); } }
+  // Picture → page layout (the same lines as a PDF text layer gives), k = points per pixel
+  async function ocrLayout(canvas, k, W, H, item, label) {
+    const w = await raceStop(ocrStart(item));
+    ocrCtx = { item, label };
+    let res;
+    try { res = await raceStop(w.recognize(canvas, {}, { blocks: true, text: false, hocr: false, tsv: false })); }
+    finally { ocrCtx = null; }
+    const lines = [];
+    for (const b of res.data.blocks || []) for (const p of b.paragraphs) for (const ln of p.lines) {
+      const rh = (ln.rowAttributes && ln.rowAttributes.row_height) || (ln.bbox.y1 - ln.bbox.y0);
+      // Words of one Tesseract line share one baseline, so a slightly tilted photo doesn't break the line apart
+      const bl = ln.baseline, y = bl && bl.y0 > 0 ? (bl.y0 + bl.y1) / 2 : ln.bbox.y1;
+      const words = ln.words.filter(wd => { const t = (wd.text || '').trim(); return t && !(wd.confidence < 25 && t.length < 3); }); // specks and noise
+      if (words.length) lines.push({ size: Math.max(4, rh * k * 1.05), y: y * k, words });
+    }
+    // Sizes read off a picture wobble from line to line: the ones close to the usual size are set to it
+    const body = median(lines.map(l => l.size));
+    lines.forEach(l => { if (Math.abs(l.size - body) < body * 0.15) l.size = body; });
+    const items = lines.flatMap(l => l.words.map(wd => ({ s: wd.text.trim(), x: wd.bbox.x0 * k, y: l.y, w: (wd.bbox.x1 - wd.bbox.x0) * k, size: l.size, b: false, i: false, f: 'Times New Roman' })));
+    return layoutFromItems(items, W, H);
+  }
+  // A PDF page drawn at about 300 dpi (less for huge pages), then read
+  async function ocrPdfPage(page, item, label) {
+    const vp1 = page.getViewport({ scale: 1 });
+    const scale = Math.min(300 / 72, Math.sqrt(Math.min(MAX_PIXELS, 24e6) / (vp1.width * vp1.height)));
+    const vp = page.getViewport({ scale });
+    const c = document.createElement('canvas'); c.width = Math.ceil(vp.width); c.height = Math.ceil(vp.height);
+    const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    try { return await ocrLayout(c, 1 / scale, vp1.width, vp1.height, item, label); } finally { c.width = c.height = 0; }
+  }
+  // A photo or screenshot of a document → text or Word
+  async function imageOcr(item, target) {
+    const d = await decodeImage(item.file, item.ext);
+    let c;
+    try {
+      c = drawImage(d, true, 0);
+      // Small pictures are enlarged: Tesseract reads letters best when they are 20–40 px tall
+      if (Math.max(c.width, c.height) < 1600 && c.width * c.height * 4 < MAX_PIXELS) {
+        const big = document.createElement('canvas'); big.width = c.width * 2; big.height = c.height * 2;
+        const g = big.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(c, 0, 0, big.width, big.height); c = big;
+      }
+    } finally { d.done(); }
+    const W = 595.28, k = W / c.width, H = Math.max(841.89, c.height * k);
+    const L = await ocrLayout(c, k, W, H, item, '');
+    c.width = c.height = 0;
+    if (!L.lines.length) throw new Error('Текст на картинке не нашёлся. Нужна чёткая фотография документа или скриншот с текстом.');
+    const base = baseOf(item.file.name);
+    if (target === 'txt') return [{ name: `${base}.txt`, blob: textBlob(pdfParas(L).map(p => p.lines.map(l => l.text).reduce(joinLine, '')).join('\n\n') + '\n', 'text/plain') }];
+    return [{ name: `${base}.docx`, blob: await layoutsToDocx([L], base) }];
+  }
+
   async function pdfToDocx(item) {
     const doc = await openPdf(item.file);
     let pages;
@@ -2240,11 +2338,20 @@ details.more-help[open] { display: grid; gap: 8px; }
         if (stopRequested) throw new Stopped();
         setNote(item, `страница ${k + 1} из ${pages.length}`);
         const page = await doc.getPage(pages[k]);
-        layouts.push(await pdfPageLayout(page, true));
+        let L = await pdfPageLayout(page, true);
+        // A scanned page: its text is recognised and goes into Word as text instead of a picture of the page
+        if (!L.lines.length && opts.ocr) { L = await ocrPdfPage(page, item, `стр. ${k + 1} из ${pages.length}: `); item.pdfOcr = (item.pdfOcr || 0) + 1; }
+        layouts.push(L);
         page.cleanup();
         await tick();
       }
     } finally { doc.destroy(); }
+    if (!layouts.some(L => L.lines.length || L.images.length)) throw new Error(opts.ocr ? 'Текст на страницах не нашёлся: возможно, скан слишком бледный или на нём нет надписей.' : 'В PDF не нашлось ни текста, ни картинок.');
+    const blob = await layoutsToDocx(layouts, baseOf(item.file.name), item);
+    return [{ name: `${baseOf(item.file.name)}.docx`, blob }];
+  }
+  // Pages of lines and pictures → a Word file, one section per page with its size and margins
+  async function layoutsToDocx(layouts, title, item) {
     await need('docx');
     const D = window.docx;
     // The most common text size is the body; clearly bigger and shorter paragraphs become headings
@@ -2329,10 +2436,10 @@ details.more-help[open] { display: grid; gap: 8px; }
         children: children.length ? children : [new D.Paragraph({})],
       };
     });
-    if (!layouts.some(L => L.lines.length || L.images.length)) throw new Error('В PDF не нашлось ни текста, ни картинок.');
-    const out = new D.Document({ creator: 'Formater', title: baseOf(item.file.name), styles: { default: { document: { run: { font: 'Arial', size: Math.round(body * 2) } } } }, sections });
-    item.pdfScans = scans;
-    return [{ name: `${baseOf(item.file.name)}.docx`, blob: await D.Packer.toBlob(out) }];
+    const font = layouts.every(L => L.lines.every(l => l.runs.every(r => r.f === 'Times New Roman'))) ? 'Times New Roman' : 'Arial';
+    const out = new D.Document({ creator: 'Formater', title, styles: { default: { document: { run: { font, size: Math.round(body * 2) } } } }, sections });
+    if (item) item.pdfScans = scans;
+    return D.Packer.toBlob(out);
   }
 
   // ---------- Tables ----------
@@ -3721,7 +3828,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   async function convertOne(item) {
     const t = item.target;
     switch (item.kind) {
-      case 'image': return t === 'pdf' ? [await imagesToPdf([item], `${baseOf(item.file.name)}.pdf`)] : imageConvert(item, t);
+      case 'image': return t === 'pdf' ? [await imagesToPdf([item], `${baseOf(item.file.name)}.pdf`)] : (t === 'txt' || t === 'docx') ? imageOcr(item, t) : imageConvert(item, t);
       case 'video': return videoConvert(item, t);
       case 'audio': return audioConvert(item, t);
       case 'pdf': return t === 'txt' ? pdfToText(item) : t === 'docx' ? pdfToDocx(item) : pdfToImages(item, t);
@@ -3756,6 +3863,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     $('stop').disabled = true;
     stopWaiters.forEach(rej => rej(new Stopped())); stopWaiters.clear();
     if (activeJob) activeJob.cancel().catch(() => {});
+    ocrAbort(); // recognition can't be interrupted, so the worker is closed and started again next time
   });
 
   async function runConvert(todo) {
@@ -3784,6 +3892,8 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
         it.status = 'done';
         it.note = raw.length < 2 ? '' : outs.length === 1 ? `${files(raw.length)} в одном ZIP` : files(raw.length);
         if (it.pdfScans) { it.note = `${it.pdfScans} стр. без текста вставлены картинками`; it.pdfScans = 0; }
+        if (it.pdfOcr) { it.note = `распознано ${it.pdfOcr} стр. скана, проверьте текст`; it.pdfOcr = 0; }
+        else if (it.kind === 'image' && (it.target === 'txt' || it.target === 'docx')) it.note = 'текст распознан, проверьте его';
       } catch (e) { console.error(e); it.status = 'error'; it.note = friendly(e); }
       renderQueue();
     }
