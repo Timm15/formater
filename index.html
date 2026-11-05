@@ -592,7 +592,14 @@ details.more-help[open] { display: grid; gap: 8px; }
               <button type="button" data-v="split" aria-pressed="false">Разделить</button>
               <button type="button" data-v="extract" aria-pressed="false">Выбрать страницы</button>
               <button type="button" data-v="rotate" aria-pressed="false">Повернуть</button>
+              <button type="button" data-v="protect" aria-pressed="false">Поставить пароль</button>
+              <button type="button" data-v="unlock" aria-pressed="false">Снять пароль</button>
             </div>
+          </div>
+          <div class="field" id="pw-field" hidden>
+            <label for="pdf-pw" id="pw-label">Пароль</label>
+            <input type="text" id="pdf-pw" autocomplete="off" spellcheck="false" autocapitalize="off">
+            <p class="hint" id="pw-hint"></p>
           </div>
           <div class="field" id="pt-pages-field">
             <label for="pt-pages">Страницы</label>
@@ -773,6 +780,7 @@ details.more-help[open] { display: grid; gap: 8px; }
     ort: ['onnxruntime-web@1.20.1/dist/ort.min.js'],
     pdflib: ['pdf-lib@1.17.1/dist/pdf-lib.min.js'],
     tesseract: ['tesseract.js@5.1.1/dist/tesseract.min.js'],
+    qpdf: ['@neslinesli93/qpdf-wasm@0.3.0/dist/qpdf.js'],
     exifr: ['exifr@7.1.3/dist/full.umd.js'],
     mp3enc: ['@mediabunny/mp3-encoder@1.61.3/dist/bundles/mediabunny-mp3-encoder.min.js'],
   };
@@ -957,11 +965,16 @@ details.more-help[open] { display: grid; gap: 8px; }
     split: 'Каждая страница станет отдельным PDF. Если страниц больше 10, они упакуются в один ZIP. Можно указать только нужные страницы.',
     extract: 'Из каждого PDF сохранятся только указанные страницы, в одном новом файле. Так же можно и удалить лишние: впишите всё, кроме них.',
     rotate: 'Повернутся все страницы или только указанные. Удобно для сканов, которые легли боком.',
+    protect: 'PDF откроется только с паролем. Шифрование AES-256, как у Adobe Acrobat: пароль не подобрать, поэтому не забудьте его.',
+    unlock: 'Сохранится копия без пароля и без запретов на печать и копирование. Нужно знать пароль; запреты без пароля на открытие снимаются и так.',
   };
   function ptoolUi() {
     $('pt-hint').textContent = PT_HINT[opts.ptool] || '';
     $('prot-field').hidden = opts.ptool !== 'rotate';
-    $('pt-pages-field').hidden = opts.ptool === 'merge';
+    $('pt-pages-field').hidden = ['merge', 'protect', 'unlock'].includes(opts.ptool);
+    $('pw-field').hidden = !['protect', 'unlock'].includes(opts.ptool);
+    $('pw-label').textContent = opts.ptool === 'protect' ? 'Новый пароль' : 'Пароль от PDF';
+    $('pw-hint').textContent = opts.ptool === 'protect' ? 'Он не сохраняется на сайте. Запишите его: восстановить пароль никто не сможет.' : 'Если PDF открывается без пароля, а запрещены только печать или копирование, поле можно оставить пустым.';
   }
   ptoolUi();
   bindSeg('bgq', 'bgq', String, () => { for (const k in bgBad) delete bgBad[k]; bgqUi(); renderQueue(); });
@@ -1061,7 +1074,7 @@ details.more-help[open] { display: grid; gap: 8px; }
   levelHints();
 
   // ---------- Mode ----------
-  const PT_GO = { merge: 'Объединить', split: 'Разделить', extract: 'Выбрать страницы', rotate: 'Повернуть' };
+  const PT_GO = { merge: 'Объединить', split: 'Разделить', extract: 'Выбрать страницы', rotate: 'Повернуть', protect: 'Поставить пароль', unlock: 'Снять пароль' };
   function setGoLabel() {
     const m = opts.mode;
     $('go-label').textContent = m === 'convert' ? 'Конвертировать' : m === 'compress' ? 'Сжать' : m === 'trim' ? 'Обрезать' : m === 'bg' ? 'Убрать фон' : m === 'meta' ? (opts.mwhat === 'gps' ? 'Удалить место съёмки' : 'Удалить метаданные') : PT_GO[opts.ptool] || 'Объединить';
@@ -1207,7 +1220,7 @@ details.more-help[open] { display: grid; gap: 8px; }
           if (!list.includes(it.target)) it.target = defaultTarget(it.ext, it.kind);
           right = `<div class="to">${trimBtn}<span class="arrow" aria-hidden="true">→</span><select data-id="${it.id}" aria-label="Формат для ${esc(it.file.name)}">${list.map(t => `<option value="${t}"${t === it.target ? ' selected' : ''}>${LABEL[t]}</option>`).join('')}</select></div>`;
         }
-        if (it.locked && it.status === 'ready') status = '<span class="status-warn">PDF защищён паролем: снимите пароль и добавьте файл снова</span>';
+        if (it.locked && it.status === 'ready' && !(pdfMode && opts.ptool === 'unlock')) status = '<span class="status-warn">PDF защищён паролем. Снять его: вкладка «PDF» → «Снять пароль»</span>';
         return `<li class="row">
           <div class="thumb">${thumb}</div>
           <div class="meta"><span class="name" title="${esc(it.file.name)}">${esc(it.file.name)}</span>
@@ -1311,6 +1324,7 @@ details.more-help[open] { display: grid; gap: 8px; }
         'Разделить: каждая страница сохранится отдельным PDF, а много страниц сразу упакуются в ZIP.',
         'Выбрать страницы: впишите, какие оставить, например 1-3, 7. Это же способ удалить лишние.',
         'Повернуть: исправит сканы, которые легли боком. Можно повернуть только некоторые страницы.',
+        'Пароль: поставьте его на PDF перед отправкой по почте или снимите, если он мешает. Пароль никуда не отправляется и не сохраняется.',
         'Текст и качество страниц не меняются: страницы переносятся как есть, без пережатия.',
       ] },
       image: { title: 'Фото и картинки', items: [
@@ -3226,7 +3240,64 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     out.addPage([w, h]).drawImage(img, { x: 0, y: 0, width: w, height: h });
     void L;
   }
+  // qpdf (WebAssembly) for passwords: a fresh copy per run, the 1,3 МБ program is downloaded once
+  let qpdfWasm = null;
+  async function qpdf(args, input) {
+    await need('qpdf');
+    const factory = window.Module; // the qpdf build puts its loader here
+    if (!qpdfWasm) qpdfWasm = fromCdn('@neslinesli93/qpdf-wasm@0.3.0/dist/qpdf.wasm', u => fetch(u).then(r => { if (!r.ok) throw new Error(LOAD_ERR); return r.arrayBuffer(); })).catch(e => { qpdfWasm = null; throw e; });
+    const log = [], wasmBinary = await qpdfWasm;
+    // This build takes console.log and console.error for its messages the moment a copy is made,
+    // so they are swapped for a moment to collect what qpdf says (a wrong password, for example)
+    const keep = [console.log, console.error];
+    console.log = console.error = (...a) => log.push(a.join(' '));
+    let made;
+    try { made = factory({ wasmBinary, noInitialRun: true }); } finally { [console.log, console.error] = keep; }
+    const q = await made;
+    q.FS.writeFile('/in.pdf', input);
+    let code;
+    try { code = q.callMain(args.map(a => a === 'IN' ? '/in.pdf' : a === 'OUT' ? '/out.pdf' : a)); }
+    catch (e) { code = e && typeof e.status === 'number' ? e.status : 2; }
+    let out = null;
+    try { out = q.FS.readFile('/out.pdf'); } catch {}
+    return { code, out, log: log.join('\n') };
+  }
+  async function runPassword(todo) {
+    const pw = $('pdf-pw').value;
+    if (opts.ptool === 'protect' && !pw) { toast('Впишите пароль, который нужно поставить.'); $('pdf-pw').focus(); return; }
+    for (const it of todo) {
+      if (stopRequested) { it.status = 'error'; it.note = 'Остановлено'; continue; }
+      it.status = 'working'; it.note = ''; renderQueue(); await tick();
+      try {
+        const input = new Uint8Array(await it.file.arrayBuffer()), base = baseOf(it.file.name);
+        // qpdf --is-encrypted: 0 when the file has protection, 2 when it has none, or "invalid password" when it can't even be opened
+        const chk = await raceStop(qpdf(['--is-encrypted', 'IN'], input)), enc = chk.code === 0 || /invalid password/i.test(chk.log);
+        if (opts.ptool === 'protect') {
+          if (enc) { it.status = 'skip'; it.note = 'У этого PDF уже есть пароль. Сначала снимите его, потом поставьте новый.'; renderQueue(); continue; }
+          const r = await raceStop(qpdf(['--encrypt', pw, pw, '256', '--', 'IN', 'OUT'], input));
+          if (!r.out || r.code === 2) throw new Error('Не удалось зашифровать PDF: ' + (r.log.split('\n').pop() || 'неизвестная ошибка'));
+          addResult({ name: `${base}${WORD('-с-паролем')}.pdf`, blob: new Blob([r.out], { type: 'application/pdf' }) }, undefined, true);
+          it.note = 'пароль поставлен';
+        } else {
+          if (!enc) { it.status = 'skip'; it.note = 'В этом PDF нет пароля и запретов, снимать нечего.'; renderQueue(); continue; }
+          const r = await raceStop(qpdf(['--decrypt', ...(pw ? ['--password=' + pw] : []), 'IN', 'OUT'], input));
+          if (!r.out || r.code === 2) {
+            it.status = 'error';
+            it.note = /invalid password/i.test(r.log) ? (pw ? 'Пароль не подходит. Проверьте раскладку и регистр букв.' : 'PDF открывается только с паролем: впишите его в поле «Пароль от PDF».') : 'Не удалось снять пароль: файл повреждён или защищён необычным способом.';
+            renderQueue(); continue;
+          }
+          addResult({ name: `${base}${WORD('-без-пароля')}.pdf`, blob: new Blob([r.out], { type: 'application/pdf' }) }, undefined, true);
+          it.note = 'пароль и запреты сняты';
+          it.locked = false;
+        }
+        renderResults();
+        it.status = 'done';
+      } catch (e) { console.error(e); it.status = 'error'; it.note = friendly(e); }
+      renderQueue();
+    }
+  }
   async function runPdfTools(todo) {
+    if (opts.ptool === 'protect' || opts.ptool === 'unlock') return runPassword(todo);
     const L = await need('pdflib').then(() => window.PDFLib);
     if (opts.ptool === 'merge') {
       const out = await L.PDFDocument.create();
@@ -3994,7 +4065,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   function friendly(e) {
     if (e instanceof Stopped) return 'Остановлено';
     const m = (e && e.message) || String(e);
-    if (/password|encrypt/i.test(m)) return 'Файл защищён паролем.';
+    if (/password|encrypt/i.test(m)) return 'Файл защищён паролем. Снять его можно на вкладке «PDF» → «Снять пароль».';
     if (/JSON/i.test(m) && /position|token|Unexpected/i.test(m)) return 'В JSON ошибка, его не удалось прочитать.';
     if (/memory|allocation/i.test(m)) return 'Не хватило памяти. Попробуйте файл поменьше или закройте другие вкладки.';
     if (/модел/.test(m)) return m;
