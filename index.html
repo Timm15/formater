@@ -15,6 +15,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="icon" href="favicon.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
@@ -80,6 +81,7 @@ header.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-cont
 .brand-mark { width: 40px; height: 40px; flex: none; }
 h1 { font-family: var(--display); font-weight: 700; font-size: 28px; letter-spacing: -0.01em; margin: 0; line-height: 1; }
 .tagline { margin: 0; color: var(--muted); max-width: 54ch; text-wrap: balance; }
+.install { justify-self: start; }
 .privacy { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
 .privacy svg { width: 14px; height: 14px; color: var(--ok); flex: none; }
 
@@ -395,6 +397,10 @@ details.more-help[open] { display: grid; gap: 8px; }
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
       Всё работает в браузере, файлы никуда не отправляются
     </span>
+    <button class="btn small install" id="install" type="button" hidden>
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8m0 0-3-3m3 3 3-3M3 12v1.5h10V12"/></svg>
+      Установить как приложение
+    </button>
   </header>
 
   <div class="modes" role="tablist" aria-label="Режим">
@@ -1007,7 +1013,8 @@ details.more-help[open] { display: grid; gap: 8px; }
   function addScript(src) {
     return new Promise((res, rej) => {
       const s = document.createElement('script');
-      s.src = src; s.onload = res;
+      // CORS mode, so the offline copy kept by the service worker is a normal file and not a sealed one
+      s.crossOrigin = 'anonymous'; s.src = src; s.onload = res;
       s.onerror = () => { s.remove(); const e = new Error(LOAD_ERR); e.detail = src; rej(e); };
       document.head.appendChild(s);
     });
@@ -5134,6 +5141,29 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     `<tr><td>${label}</td><td><div class="chips">${ins.map(e => chip(e, FAMILY[KIND[e]] || 'other')).join('')}</div></td><td><div class="chips">${outs.map(e => chip(e, OUT_FAMILY[e] || 'other')).join('')}</div></td></tr>`).join('');
 
   setMode(['compress', 'trim', 'bg', 'pdf', 'meta'].includes(opts.mode) ? opts.mode : 'convert');
+
+  // ---------- App: works offline, installs like an app, takes files from the phone's "Share" menu ----------
+  // Not inside Claude's preview (window.claude): a service worker belongs to the real site only
+  if ('serviceWorker' in navigator && !window.claude && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+    navigator.serviceWorker.register('sw.js').catch(e => console.warn('service worker', e));
+  }
+  let installEvt = null;
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; $('install').hidden = false; });
+  window.addEventListener('appinstalled', () => { installEvt = null; $('install').hidden = true; toast('Formater установлен: его можно открыть с рабочего стола или из списка приложений.'); });
+  $('install').addEventListener('click', async () => { if (!installEvt) return; installEvt.prompt(); try { await installEvt.userChoice; } catch {} installEvt = null; $('install').hidden = true; });
+  // Files shared to the installed app wait in the service worker's store; they go to the queue and leave the store
+  if (/[?&]shared=1/.test(location.search) && 'caches' in window) (async () => {
+    try {
+      const c = await caches.open('formater-share'), keys = await c.keys(), list = [];
+      for (const k of keys) {
+        const r = await c.match(k);
+        if (r) list.push(new File([await r.blob()], decodeURIComponent(r.headers.get('x-name') || 'file'), { type: r.headers.get('content-type') || '' }));
+        await c.delete(k);
+      }
+      if (list.length) { addFiles(list); toast(`Получено: ${files(list.length)}`); }
+    } catch (e) { console.warn(e); }
+    history.replaceState(null, '', location.pathname);
+  })();
 })();
 </script>
 </body>
