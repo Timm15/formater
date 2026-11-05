@@ -533,6 +533,26 @@ details.more-help[open] { display: grid; gap: 8px; }
           </div>
           <p class="hint" id="pdf-hint" data-cats="pdf:png,jpg"></p>
         </div>
+        <div class="set" data-cats="audio:txt,srt video:txt,srt">
+          <h3>Расшифровка речи</h3>
+          <div class="field">
+            <span id="asr-model-label">Модель</span>
+            <div class="seg words" role="group" aria-labelledby="asr-model-label" id="asr-model">
+              <button type="button" data-v="base" aria-pressed="true">Быстрее</button>
+              <button type="button" data-v="small" aria-pressed="false">Точнее</button>
+            </div>
+          </div>
+          <div class="field">
+            <span id="asr-lang-label">Язык речи</span>
+            <div class="seg words" role="group" aria-labelledby="asr-lang-label" id="asr-lang">
+              <button type="button" data-v="russian" aria-pressed="true">Русский</button>
+              <button type="button" data-v="english" aria-pressed="false">Английский</button>
+              <button type="button" data-v="auto" aria-pressed="false">Определить</button>
+            </div>
+          </div>
+          <p class="hint">Whisper от OpenAI прямо в браузере. Модель скачивается один раз: «Быстрее» около 100 МБ, «Точнее» около 270 МБ. Час записи расшифровывается от 20 минут до часа, в зависимости от компьютера.</p>
+          <p class="hint">TXT — сплошной текст с абзацами по паузам, SRT — субтитры со временем для видеоплеера и YouTube.</p>
+        </div>
         <div class="set" data-cats="pdf:txt,docx image:txt,docx">
           <h3>Распознавание текста</h3>
           <label class="check" data-cats="pdf:txt,docx"><input type="checkbox" id="ocr" checked> Распознавать сканы: страницы без текста прочитаются как текст</label>
@@ -1070,13 +1090,13 @@ details.more-help[open] { display: grid; gap: 8px; }
     json: 'json', md: 'md', markdown: 'md', html: 'html', htm: 'html', docx: 'docx', txt: 'txt', log: 'txt',
   };
   const FAMILY = { image: 'image', video: 'video', audio: 'audio', pdf: 'pdf', sheet: 'table', json: 'table', md: 'doc', html: 'doc', docx: 'doc', txt: 'doc' };
-  const OUT_FAMILY = { png: 'image', jpg: 'image', webp: 'image', gif: 'image', bmp: 'image', ico: 'image', pdf: 'pdf', mp4: 'video', webm: 'video', mov: 'video', mkv: 'video', mp3: 'audio', wav: 'audio', ogg: 'audio', m4a: 'audio', csv: 'table', xlsx: 'table', ods: 'table', json: 'table', html: 'doc', md: 'doc', txt: 'doc', docx: 'doc', zip: 'other' };
-  const LABEL = { png: 'PNG', jpg: 'JPG', webp: 'WEBP', gif: 'GIF', bmp: 'BMP', ico: 'ICO', pdf: 'PDF', mp4: 'MP4', webm: 'WEBM', mov: 'MOV', mkv: 'MKV', mp3: 'MP3', wav: 'WAV', ogg: 'OGG', m4a: 'M4A', txt: 'TXT', csv: 'CSV', xlsx: 'XLSX', ods: 'ODS', json: 'JSON', html: 'HTML', md: 'MD', docx: 'DOCX' };
-  const ORDER = ['png', 'jpg', 'webp', 'gif', 'bmp', 'ico', 'pdf', 'mp4', 'webm', 'mov', 'mkv', 'mp3', 'wav', 'ogg', 'm4a', 'docx', 'xlsx', 'ods', 'csv', 'json', 'html', 'md', 'txt'];
+  const OUT_FAMILY = { srt: 'doc', png: 'image', jpg: 'image', webp: 'image', gif: 'image', bmp: 'image', ico: 'image', pdf: 'pdf', mp4: 'video', webm: 'video', mov: 'video', mkv: 'video', mp3: 'audio', wav: 'audio', ogg: 'audio', m4a: 'audio', csv: 'table', xlsx: 'table', ods: 'table', json: 'table', html: 'doc', md: 'doc', txt: 'doc', docx: 'doc', zip: 'other' };
+  const LABEL = { srt: 'SRT', png: 'PNG', jpg: 'JPG', webp: 'WEBP', gif: 'GIF', bmp: 'BMP', ico: 'ICO', pdf: 'PDF', mp4: 'MP4', webm: 'WEBM', mov: 'MOV', mkv: 'MKV', mp3: 'MP3', wav: 'WAV', ogg: 'OGG', m4a: 'M4A', txt: 'TXT', csv: 'CSV', xlsx: 'XLSX', ods: 'ODS', json: 'JSON', html: 'HTML', md: 'MD', docx: 'DOCX' };
+  const ORDER = ['png', 'jpg', 'webp', 'gif', 'bmp', 'ico', 'pdf', 'mp4', 'webm', 'mov', 'mkv', 'mp3', 'wav', 'ogg', 'm4a', 'docx', 'xlsx', 'ods', 'csv', 'json', 'html', 'md', 'txt', 'srt'];
   const MATRIX = [
     ['Фото и картинки', ['jpg', 'png', 'webp', 'heic', 'gif', 'bmp', 'tiff', 'svg', 'avif', 'ico'], ['png', 'jpg', 'webp', 'gif', 'bmp', 'ico', 'pdf', 'docx', 'txt']],
-    ['Видео', ['mp4', 'mov', 'webm', 'mkv', 'm4v', 'ts', 'ogv', '3gp'], ['mp4', 'webm', 'mov', 'mkv', 'gif', 'mp3', 'wav', 'ogg', 'm4a']],
-    ['Аудио', ['mp3', 'wav', 'm4a', 'ogg', 'opus', 'flac', 'aac'], ['mp3', 'wav', 'ogg', 'm4a']],
+    ['Видео', ['mp4', 'mov', 'webm', 'mkv', 'm4v', 'ts', 'ogv', '3gp'], ['mp4', 'webm', 'mov', 'mkv', 'gif', 'mp3', 'wav', 'ogg', 'm4a', 'txt', 'srt']],
+    ['Аудио', ['mp3', 'wav', 'm4a', 'ogg', 'opus', 'flac', 'aac'], ['mp3', 'wav', 'ogg', 'm4a', 'txt', 'srt']],
     ['PDF', ['pdf'], ['docx', 'png', 'jpg', 'txt']],
     ['Таблицы', ['xlsx', 'xls', 'ods', 'csv', 'tsv'], ['xlsx', 'ods', 'csv', 'json', 'html', 'md', 'pdf']],
     ['Данные', ['json'], ['xlsx', 'csv', 'html', 'md', 'pdf']],
@@ -1096,8 +1116,8 @@ details.more-help[open] { display: grid; gap: 8px; }
     const e = normExt(ext);
     const list = {
       image: ['png', 'jpg', 'webp', 'gif', 'bmp', 'ico', 'pdf', 'docx', 'txt'],
-      video: ['mp4', 'webm', 'mov', 'mkv', 'gif', 'mp3', 'wav', 'ogg', 'm4a'],
-      audio: ['mp3', 'wav', 'ogg', 'm4a'],
+      video: ['mp4', 'webm', 'mov', 'mkv', 'gif', 'mp3', 'wav', 'ogg', 'm4a', 'txt', 'srt'],
+      audio: ['mp3', 'wav', 'ogg', 'm4a', 'txt', 'srt'],
       pdf: ['docx', 'png', 'jpg', 'txt'],
       sheet: ['xlsx', 'ods', 'csv', 'json', 'html', 'md', 'pdf'],
       json: ['xlsx', 'csv', 'html', 'md', 'pdf'],
@@ -1169,7 +1189,7 @@ details.more-help[open] { display: grid; gap: 8px; }
   let pixelNote = false;
 
   // ---------- Settings ----------
-  const opts = { mode: 'convert', quality: 0.9, maxSide: 0, bg: '#ffffff', page: 'fit', merge: true, dpi: 150, sep: ';', gifw: 480, giff: 12, level: 'medium', cfmt: 'same', targetKb: 0, cmax: 0, vres: 'auto', mute: false, pdfPages: '', pdfJoin: false, pack: 'auto', bgq: 'hq', bgm: 'ai', bgcm: 'auto', bgc: '#ffffff', bgtol: 25, bgarea: 'edge', bgsoft: true, bbMode: 'erase', bgnew: 'none', bgfill: '#ffffff', bgblur: 60, ptool: 'merge', prot: 90, ptPages: '', mwhat: 'all', ocr: true, wmText: '', wmMode: 'diag', wmOpacity: 25, pnum: false, pnumPos: 'bc', pnumFmt: 'n', vlimit: 0, upx: 2, upfmt: 'same' };
+  const opts = { mode: 'convert', quality: 0.9, maxSide: 0, bg: '#ffffff', page: 'fit', merge: true, dpi: 150, sep: ';', gifw: 480, giff: 12, level: 'medium', cfmt: 'same', targetKb: 0, cmax: 0, vres: 'auto', mute: false, pdfPages: '', pdfJoin: false, pack: 'auto', bgq: 'hq', bgm: 'ai', bgcm: 'auto', bgc: '#ffffff', bgtol: 25, bgarea: 'edge', bgsoft: true, bbMode: 'erase', bgnew: 'none', bgfill: '#ffffff', bgblur: 60, ptool: 'merge', prot: 90, ptPages: '', mwhat: 'all', ocr: true, wmText: '', wmMode: 'diag', wmOpacity: 25, pnum: false, pnumPos: 'bc', pnumFmt: 'n', vlimit: 0, upx: 2, upfmt: 'same', asrModel: 'base', asrLang: 'russian' };
   const store = {
     get() { try { return JSON.parse(localStorage.getItem('formater-opts') || 'null'); } catch { return null; } },
     set(v) { try { localStorage.setItem('formater-opts', JSON.stringify(v)); } catch {} },
@@ -1204,6 +1224,8 @@ details.more-help[open] { display: grid; gap: 8px; }
   bindSeg('cfmt', 'cfmt', String, () => renderQueue());
   bindSeg('vres', 'vres', String);
   bindSeg('upx', 'upx', Number, () => renderQueue());
+  bindSeg('asr-model', 'asrModel', String);
+  bindSeg('asr-lang', 'asrLang', String);
   bindSeg('upfmt', 'upfmt', String, () => renderQueue());
   bindSeg('vlimit', 'vlimit', Number, () => { $('vlimit-mb').value = ''; });
   $('vlimit-mb').value = [0, 20, 25, 50].includes(opts.vlimit) ? '' : opts.vlimit || '';
@@ -1596,11 +1618,13 @@ details.more-help[open] { display: grid; gap: 8px; }
       video: { title: 'Видео', items: [
         'MP4 откроется на любом устройстве. WEBM легче и хорошо работает на сайтах.',
         'Чтобы достать звук из видео, выберите MP3.',
+        ['TXT и SRT из видео: речь расшифруется в текст или субтитры со временем. Всё считается на вашем устройстве.', 'video:txt,srt'],
         ['GIF делается из первых 30 секунд. Ширину и число кадров выбирайте в настройках.', 'video:gif'],
         'Значок с ножницами у файла обрежет начало и конец.',
       ] },
       audio: { title: 'Аудио', items: [
         'MP3 играет везде. WAV без потерь, но весит в 5–10 раз больше. M4A и OGG дают хорошее качество при малом весе.',
+        ['TXT расшифрует речь в текст, SRT сделает субтитры. Подходит для лекций, интервью и голосовых сообщений.', 'audio:txt,srt'],
         'Ножницы справа от файла обрезают начало и конец. Тяните края на волне и слушайте результат до сохранения.',
         'Чтобы только обрезать, оставьте тот же формат: он появится в списке после обрезки.',
       ] },
@@ -2437,6 +2461,140 @@ details.more-help[open] { display: grid; gap: 8px; }
       gif.finish();
       return new Blob([gif.bytes()], { type: 'image/gif' });
     } finally { if (input.dispose) try { input.dispose(); } catch {} }
+  }
+  // ---------- Speech to text: Whisper (transformers.js) in its own worker, so the page stays responsive and «Стоп» is instant ----------
+  const ASR_LIB = '@huggingface/transformers@3.7.5/dist/';
+  const ASR_MODELS = { base: 'onnx-community/whisper-base', small: 'onnx-community/whisper-small' };
+  const ASR_HOSTS = ['https://huggingface.co/', 'https://hf-mirror.com/']; // the second one if the first doesn't answer
+  let asrW = null; // { worker, model, ready: Promise, calls: Map }
+  const ASR_WORKER = `
+    let asr = null;
+    self.onmessage = async ({ data: m }) => {
+      try {
+        if (m.type === 'load') {
+          let T;
+          try { T = await import(m.lib + 'transformers.min.js'); } catch (e) { self.postMessage({ type: 'error', stage: 'lib', message: String((e && e.message) || e) }); return; }
+          T.env.allowLocalModels = false;
+          T.env.backends.onnx.wasm.wasmPaths = m.lib;
+          let last;
+          for (const host of m.hosts) {
+            try {
+              T.env.remoteHost = host;
+              asr = await T.pipeline('automatic-speech-recognition', m.model, { dtype: 'q8', device: 'wasm', progress_callback: p => self.postMessage({ type: 'progress', p }) });
+              break;
+            } catch (e) { last = e; }
+          }
+          if (!asr) throw last || new Error('model');
+          self.postMessage({ type: 'ready' });
+        } else if (m.type === 'run') {
+          const out = await asr(m.audio, { chunk_length_s: 30, stride_length_s: 5, return_timestamps: true, task: 'transcribe', ...(m.language ? { language: m.language } : {}) });
+          self.postMessage({ type: 'result', id: m.id, out });
+        }
+      } catch (e) { self.postMessage({ type: 'error', id: m.id, message: String((e && e.message) || e) }); }
+    };`;
+  function asrStop() { if (asrW) { asrW.worker.terminate(); asrW.calls.forEach(c => c.rej(new Stopped())); asrW = null; } }
+  function asrStart(item) {
+    const model = ASR_MODELS[opts.asrModel] || ASR_MODELS.base;
+    if (asrW && asrW.model === model) return asrW;
+    asrStop();
+    const url = URL.createObjectURL(new Blob([ASR_WORKER], { type: 'text/javascript' }));
+    const worker = new Worker(url, { type: 'module' });
+    const w = asrW = { worker, model, calls: new Map(), files: {}, item };
+    w.ready = new Promise((res, rej) => {
+      worker.onmessage = ({ data: m }) => {
+        if (m.type === 'progress') {
+          const p = m.p;
+          if (p.status === 'progress' && p.file) { w.files[p.file] = [p.loaded || 0, p.total || 0]; const v = Object.values(w.files), got = v.reduce((a, x) => a + x[0], 0), all = v.reduce((a, x) => a + x[1], 0); if (all) setNote(w.item, `загружаю модель ${Math.min(99, Math.round(got / all * 100))}%`); }
+        } else if (m.type === 'ready') res();
+        else if (m.type === 'result' && w.calls.has(m.id)) { w.calls.get(m.id).res(m.out); w.calls.delete(m.id); }
+        else if (m.type === 'error') {
+          console.warn('speech recognition:', m.message);
+          const e = new Error(m.stage === 'lib' ? LOAD_ERR : /fetch|network|Failed to|load|40\d|50\d/i.test(m.message) ? 'Не удалось скачать модель расшифровки. Проверьте интернет: модель загружается с Hugging Face.' : 'Расшифровка не удалась: ' + m.message.slice(0, 120));
+          if (m.id != null && w.calls.has(m.id)) { w.calls.get(m.id).rej(e); w.calls.delete(m.id); } else { rej(e); if (asrW === w) asrStop(); }
+        }
+      };
+      worker.onerror = e => { rej(new Error('Расшифровка не запустилась в этом браузере. Попробуйте Chrome, Edge или Firefox.')); if (asrW === w) asrStop(); };
+    });
+    worker.postMessage({ type: 'load', lib: CDN + ASR_LIB, model, hosts: ASR_HOSTS });
+    URL.revokeObjectURL(url);
+    return w;
+  }
+  let asrSeq = 0;
+  function asrRun(w, audio, language) {
+    const id = ++asrSeq;
+    return new Promise((res, rej) => { w.calls.set(id, { res, rej }); w.worker.postMessage({ type: 'run', id, audio, language }, [audio.buffer]); });
+  }
+  // The sound as Whisper wants it: one channel, 16 000 samples a second
+  async function audio16k(item) {
+    const decode = async buf => {
+      const AC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+      const probe = new AC(1, 1, 16000);
+      const b = await new Promise((res, rej) => { const p = probe.decodeAudioData(buf, res, rej); if (p && p.then) p.then(res, rej); });
+      const n = Math.max(1, Math.ceil(b.duration * 16000)), ctx = new AC(1, n, 16000), src = ctx.createBufferSource();
+      src.buffer = b; src.connect(ctx.destination); src.start();
+      return (await ctx.startRendering()).getChannelData(0);
+    };
+    let pcm;
+    try { pcm = await decode(await item.file.arrayBuffer()); }
+    catch {
+      // formats the browser can't decode directly go through a WAV copy first
+      const wav = await mediaJob({ ...item, edit: false, t0: undefined, t1: undefined }, 'wav', null, { sampleRate: 16000, numberOfChannels: 1 }, false);
+      pcm = await decode(await wav.arrayBuffer());
+    }
+    const tr = activeTrim(item);
+    if (tr) pcm = pcm.slice(Math.floor(tr.start * 16000), tr.end == null ? undefined : Math.ceil(tr.end * 16000));
+    return pcm;
+  }
+  // Long recordings go in parts of about 3 minutes, cut at the quietest moment nearby so no word is split
+  function speechParts(pcm, sr = 16000, len = 180) {
+    const parts = [];
+    let at = 0;
+    while (pcm.length - at > sr * (len + 30)) {
+      let best = at + sr * len, bestE = Infinity;
+      for (let c = at + sr * (len - 15); c < at + sr * (len + 15); c += sr / 10) {
+        let e = 0; for (let i = c; i < c + sr / 5; i++) e += pcm[i] * pcm[i];
+        if (e < bestE) { bestE = e; best = c + sr / 10; }
+      }
+      parts.push([at, Math.round(best)]); at = Math.round(best);
+    }
+    parts.push([at, pcm.length]);
+    return parts;
+  }
+  const srtTime = t => { const ms = Math.max(0, Math.round(t * 1000)), h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, s = Math.floor(ms / 1000) % 60; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')},${String(ms % 1000).padStart(3, '0')}`; };
+  // Subtitle lines of up to 42 characters, two lines at most per cue
+  function srtFrom(chunks) {
+    const wrap = t => { const w = t.split(/\s+/), lines = ['']; for (const x of w) { const l = lines[lines.length - 1]; if (l && (l + ' ' + x).length > 42 && lines.length < 2) lines.push(x); else lines[lines.length - 1] = l ? l + ' ' + x : x; } return lines.join('\n'); };
+    return chunks.filter(c => c.text.trim()).map((c, i) => `${i + 1}\n${srtTime(c.start)} --> ${srtTime(Math.max(c.end, c.start + 0.5))}\n${wrap(c.text.trim())}\n`).join('\n');
+  }
+  // Plain text: a new paragraph after a pause of more than two seconds
+  function txtFrom(chunks) {
+    let out = '', prev = null;
+    for (const c of chunks) { const t = c.text.trim(); if (!t) continue; out += prev == null ? t : (c.start - prev > 2 ? '\n\n' : ' ') + t; prev = c.end; }
+    return out.trim() + '\n';
+  }
+  async function transcribe(item, target) {
+    setNote(item, 'готовлю звук');
+    const pcm = await audio16k(item);
+    if (pcm.length < 16000 * 0.3) throw new Error('Запись слишком короткая или в ней нет звука.');
+    const w = asrStart(item); w.item = item;
+    if (!w.files || !Object.keys(w.files).length) setNote(item, 'загружаю модель');
+    await raceStop(w.ready);
+    const parts = speechParts(pcm), chunks = [];
+    for (let k = 0; k < parts.length; k++) {
+      if (stopRequested) throw new Stopped();
+      setNote(item, parts.length > 1 ? `расшифровываю ${Math.round(k / parts.length * 100)}%` : 'расшифровываю');
+      const [a, b] = parts[k], off = a / 16000;
+      const out = await raceStop(asrRun(w, pcm.slice(a, b), opts.asrLang === 'auto' ? null : opts.asrLang));
+      for (const c of out.chunks || [{ text: out.text, timestamp: [0, (b - a) / 16000] }]) {
+        const [s0, e0] = c.timestamp || [0, null];
+        chunks.push({ text: c.text || '', start: off + (s0 || 0), end: off + (e0 == null ? (b - a) / 16000 : e0) });
+      }
+    }
+    if (!chunks.some(c => c.text.trim())) throw new Error('Речь не распозналась: в записи тишина, музыка или другой язык.');
+    const base = baseOf(item.file.name);
+    return [target === 'srt'
+      ? { name: `${base}.srt`, blob: textBlob(srtFrom(chunks), 'application/x-subrip') }
+      : { name: `${base}.txt`, blob: textBlob(txtFrom(chunks), 'text/plain') }];
   }
   async function audioConvert(item, target) {
     const blob = await mediaJob(item, target, null, (await compatCodecs(target)).a);
@@ -5022,8 +5180,8 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     const t = item.target;
     switch (item.kind) {
       case 'image': return t === 'pdf' ? [await imagesToPdf([item], `${baseOf(item.file.name)}.pdf`)] : (t === 'txt' || t === 'docx') ? imageOcr(item, t) : imageConvert(item, t);
-      case 'video': return videoConvert(item, t);
-      case 'audio': return audioConvert(item, t);
+      case 'video': return (t === 'txt' || t === 'srt') ? transcribe(item, t) : videoConvert(item, t);
+      case 'audio': return (t === 'txt' || t === 'srt') ? transcribe(item, t) : audioConvert(item, t);
       case 'pdf': return t === 'txt' ? pdfToText(item) : t === 'docx' ? pdfToDocx(item) : pdfToImages(item, t);
       case 'sheet': case 'json': return convertSheet(item, t);
       default: return convertDoc(item, t);
@@ -5057,6 +5215,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     stopWaiters.forEach(rej => rej(new Stopped())); stopWaiters.clear();
     if (activeJob) activeJob.cancel().catch(() => {});
     ocrAbort(); // recognition can't be interrupted, so the worker is closed and started again next time
+    asrStop();
   });
 
   async function runConvert(todo) {
