@@ -1181,6 +1181,7 @@ details.more-help[open] { display: grid; gap: 8px; }
     utif: ['utif2@4.1.0/UTIF.js'],
     upng: ['upng-js@2.1.0/UPNG.js'],
     ort: ['onnxruntime-web@1.20.1/dist/ort.min.js'],
+    ortgpu: ['onnxruntime-web@1.20.1/dist/ort.webgpu.min.js'],
     pdflib: ['pdf-lib@1.17.1/dist/pdf-lib.min.js'],
     tesseract: ['tesseract.js@5.1.1/dist/tesseract.min.js'],
     qpdf: ['@neslinesli93/qpdf-wasm@0.3.0/dist/qpdf.js'],
@@ -3718,19 +3719,55 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       throw e;
     } finally { clearTimeout(idle); }
   }
+  // The video card, when the browser offers WebGPU: neural networks run there several times faster.
+  // Asked once; a model that fails on the card once runs on the processor on this device from then on
+  let gpuCheck = null;
+  const gpuBanned = key => { try { return localStorage.getItem('formater-gpu-' + key) === '0'; } catch { return false; } };
+  function gpuOk() {
+    if (!gpuCheck) gpuCheck = (async () => {
+      if (!navigator.gpu || window.claude) return false;
+      try { const a = await withTimeout(navigator.gpu.requestAdapter(), 3000, 'gpu'); return !!a; } catch { return false; }
+    })();
+    return gpuCheck;
+  }
+  function gpuFailed(key, e) { console.warn(`WebGPU failed for ${key}, using the processor`, e); try { localStorage.setItem('formater-gpu-' + key, '0'); } catch {} }
+  let ortLib = null;
+  async function loadOrt() {
+    // one runtime per page: the WebGPU build (it also runs on the processor) or the smaller processor-only one
+    if (!ortLib) ortLib = (async () => {
+      const gpu = await gpuOk();
+      await stage('onnxruntime-lib', () => withTimeout(need(gpu ? 'ortgpu' : 'ort'), 40000, 'loading onnxruntime'));
+      const ort = window.ort;
+      if (!ort || !ort.InferenceSession) throw new Error('onnxruntime did not start');
+      ort.env.wasm.wasmPaths = CDN + 'onnxruntime-web@1.20.1/dist/';
+      // On the processor the network runs in a worker so the page stays responsive and «Stop» works
+      // (the worker can't reach the video card, so with WebGPU it stays on the page)
+      ort.env.wasm.proxy = !gpu && ORT_PROXY;
+      ort.env.wasm.numThreads = 1; // threads need a cross-origin isolated page, which static hosting can't give
+      return { ort, gpu };
+    })().catch(e => { ortLib = null; throw e; });
+    return ortLib;
+  }
   function bgModel(key, onProgress) {
     if (!bgSessions[key]) {
       bgSessions[key] = (async () => {
-        await stage('onnxruntime-lib', () => withTimeout(need('ort'), 40000, 'loading onnxruntime'));
-        const ort = window.ort;
-        if (!ort || !ort.InferenceSession) throw new Error('onnxruntime did not start');
-        ort.env.wasm.wasmPaths = CDN + 'onnxruntime-web@1.20.1/dist/';
-        // The network runs in a worker so the page stays responsive and «Stop» works; if that fails once, the next visit runs it directly
-        ort.env.wasm.proxy = ORT_PROXY;
-        ort.env.wasm.numThreads = 1; // threads need a cross-origin isolated page, which static hosting can't give
+        const { ort, gpu } = await loadOrt();
         const buf = await stage(`model-${key}`, () => fetchModel(BG_MODELS[key], onProgress));
         // Plain settings that keep memory use low, so that phones can run the model
-        return stage(`session-${key}`, () => withTimeout(ort.InferenceSession.create(buf, { executionProviders: ['wasm'], graphOptimizationLevel: 'basic', enableCpuMemArena: false, enableMemPattern: false }), 120000, 'starting the model'));
+        const make = ep => stage(`session-${key}`, () => withTimeout(ort.InferenceSession.create(buf, { executionProviders: ep, graphOptimizationLevel: 'basic', enableCpuMemArena: false, enableMemPattern: false }), 120000, 'starting the model'));
+        let sess = null, onGpu = false;
+        if (gpu && !gpuBanned(key)) { try { sess = await make(['webgpu', 'wasm']); onGpu = true; } catch (e) { gpuFailed(key, e); } }
+        if (!sess) sess = await make(['wasm']);
+        // The same face as a session; a run that fails on the video card is repeated on the processor, and stays there
+        return {
+          inputNames: sess.inputNames, outputNames: sess.outputNames,
+          get gpu() { return onGpu; },
+          async run(feeds) {
+            if (!onGpu) return sess.run(feeds);
+            try { return await sess.run(feeds); }
+            catch (e) { gpuFailed(key, e); try { sess.release && sess.release(); } catch {} sess = await make(['wasm']); onGpu = false; return sess.run(feeds); }
+          },
+        };
       })().catch(e => { delete bgSessions[key]; throw e; });
     }
     return bgSessions[key];
@@ -4255,7 +4292,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     let fin = out;
     if (ext === 'jpg' && alpha) { fin = document.createElement('canvas'); fin.width = out.width; fin.height = out.height; const g = fin.getContext('2d'); g.fillStyle = opts.bg; g.fillRect(0, 0, fin.width, fin.height); g.drawImage(out, 0, 0); }
     const blob = await encodeCanvas(fin, ext, 0.92);
-    return { name: `${baseOf(item.file.name)}-x${S}.${ext}`, blob, size: `${out.width}×${out.height}` };
+    return { name: `${baseOf(item.file.name)}-x${S}.${ext}`, blob, size: `${out.width}×${out.height}`, gpu: sess.gpu };
   }
   async function runUpscale(todo) {
     for (const it of todo) {
@@ -4265,7 +4302,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
         const out = await raceStop(upscaleImage(it));
         out.src = it.file;
         addResult(out, undefined, true); renderResults();
-        it.status = 'done'; it.note = out.size + ' px';
+        it.status = 'done'; it.note = out.size + ' px' + (out.gpu ? ', на видеокарте' : '');
       } catch (e) {
         console.error(e); it.status = 'error';
         const m = (e && e.message) || String(e);
