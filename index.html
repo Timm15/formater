@@ -6015,11 +6015,17 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   [$('queue'), $('results')].forEach(l => l.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-view], [data-rview]')) { e.preventDefault(); e.target.click(); } }));
 
   // ---------- Theme: as the system, light or dark ----------
-  const THEMES = { auto: ['Тема: как в системе', '◐'], light: ['Тема: светлая', '☀'], dark: ['Тема: тёмная', '☾'] };
+  // Drawn icons: the symbol characters are missing from the site's font on some systems
+  const TI = p => `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">${p}</svg>`;
+  const THEMES = {
+    auto: ['Тема: как в системе', TI('<circle cx="8" cy="8" r="6"/><path d="M8 2a6 6 0 0 1 0 12z" fill="currentColor"/>')],
+    light: ['Тема: светлая', TI('<circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1"/>')],
+    dark: ['Тема: тёмная', TI('<path d="M13.5 9.5A6 6 0 0 1 6.5 2.5a6 6 0 1 0 7 7z"/>')],
+  };
   function themeUi() {
     let t = 'auto'; try { t = localStorage.getItem('formater-theme') || 'auto'; } catch {}
     if (t === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
-    $('theme').innerHTML = `<span aria-hidden="true">${THEMES[t][1]}</span> ${THEMES[t][0].replace('Тема: ', '')}`; $('theme').title = THEMES[t][0];
+    $('theme').innerHTML = `${THEMES[t][1]} ${THEMES[t][0].replace('Тема: ', '')}`; $('theme').title = THEMES[t][0];
   }
   $('theme').addEventListener('click', () => {
     let t = 'auto'; try { t = localStorage.getItem('formater-theme') || 'auto'; } catch {}
@@ -6088,7 +6094,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   });
 
   // ---------- Static parts ----------
-  $('exts').innerHTML = ['jpg', 'png', 'heic', 'webp', 'mp4', 'mov', 'mp3', 'wav', 'pdf', 'docx', 'xlsx', 'csv', 'json', 'md', 'html', 'txt']
+  $('exts').innerHTML = ['jpg', 'png', 'heic', 'webp', 'avif', 'mp4', 'mov', 'mp3', 'wav', 'pdf', 'docx', 'xlsx', 'csv', 'json', 'md', 'html', 'txt', 'zip']
     .map(e => chip(e, FAMILY[KIND[e]] || 'other')).join('');
   $('matrix').innerHTML = MATRIX.map(([label, ins, outs]) =>
     `<tr><td>${label}</td><td><div class="chips">${ins.map(e => chip(e, FAMILY[KIND[e]] || 'other')).join('')}</div></td><td><div class="chips">${outs.map(e => chip(e, OUT_FAMILY[e] || 'other')).join('')}</div></td></tr>`).join('');
