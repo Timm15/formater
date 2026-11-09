@@ -2290,7 +2290,7 @@ details.more-help[open] { display: grid; gap: 8px; }
   function sqPool() {
     if (!sq.workers.length) {
       const url = URL.createObjectURL(new Blob([SQ_WORKER], { type: 'text/javascript' }));
-      const n = Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1, COARSE ? 2 : 4));
+      const n = Math.min(COARSE ? 2 : 4, Math.max(2, navigator.hardwareConcurrency || 2));
       for (let i = 0; i < n; i++) {
         const w = new Worker(url, { type: 'module' }), slot = { w, job: null };
         w.onmessage = ({ data: r }) => { const j = slot.job; slot.job = null; if (j) (r.error ? j.rej(new Error(r.error)) : j.res(r.buf)); sqNext(); };
@@ -5313,9 +5313,9 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       } catch (e) { console.error(e); toPdf.forEach(it => { it.status = 'error'; it.note = friendly(e); }); }
       renderQueue();
     }
-    for (const it of todo) {
-      if (merged && toPdf.includes(it)) continue;
-      if (stopRequested) { it.status = 'error'; it.note = 'Остановлено'; continue; }
+    const light = it => (it.kind === 'image' && !['pdf', 'txt', 'docx'].includes(it.target)) || (['sheet', 'json', 'md', 'html', 'txt', 'docx'].includes(it.kind) && it.target !== 'pdf');
+    await runAll(todo.filter(it => !(merged && toPdf.includes(it))), light, async it => {
+      if (stopRequested) { it.status = 'error'; it.note = 'Остановлено'; return; }
       it.status = 'working'; it.note = ''; renderQueue();
       await tick();
       try {
@@ -5330,7 +5330,16 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
         else if (it.kind === 'image' && (it.target === 'txt' || it.target === 'docx')) it.note = 'текст распознан, проверьте его';
       } catch (e) { console.error(e); it.status = 'error'; it.note = friendly(e); }
       renderQueue();
-    }
+    });
+  }
+  // Light jobs (photos, documents) run a few at a time — the encoders work in their own threads anyway.
+  // Heavy ones (video, sound, neural networks, pages drawn on the shared hidden sheet) go one by one, after them
+  const PAR = Math.min(COARSE ? 2 : 4, Math.max(2, navigator.hardwareConcurrency || 2)); // the page itself mostly waits, so even two cores gain
+  async function runAll(todo, isLight, one) {
+    const light = todo.filter(isLight), heavy = todo.filter(it => !isLight(it));
+    let i = 0;
+    await Promise.all(Array.from({ length: Math.min(PAR, light.length) }, async () => { while (i < light.length) await one(light[i++]); }));
+    for (const it of heavy) await one(it);
   }
   async function runTrim(todo) {
     for (const it of todo) {
@@ -5349,10 +5358,10 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     }
   }
   async function runCompress(todo) {
-    for (const it of todo) {
+    await runAll(todo, it => it.kind === 'image', async it => {
       const plan = compressPlan(it);
-      if (plan.no) continue;
-      if (stopRequested) { it.status = 'error'; it.note = 'Остановлено'; continue; }
+      if (plan.no) return;
+      if (stopRequested) { it.status = 'error'; it.note = 'Остановлено'; return; }
       it.status = 'working'; it.note = ''; renderQueue();
       await tick();
       try {
@@ -5360,7 +5369,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
           : it.kind === 'video' ? compressVideo(it, plan.out)
           : compressAudio(it));
         const pct = Math.round((1 - out.blob.size / it.file.size) * 100);
-        if (out.fits) { it.status = 'skip'; it.note = `Уже меньше ${opts.vlimit} МБ, сжимать не нужно`; renderQueue(); continue; }
+        if (out.fits) { it.status = 'skip'; it.note = `Уже меньше ${opts.vlimit} МБ, сжимать не нужно`; renderQueue(); return; }
         if (out.blob.size >= it.file.size * 0.98 && normExt(it.ext) === plan.out) {
           it.status = 'skip';
           it.note = it.kind === 'pdf' ? (out.pics ? 'Картинки в PDF уже сжаты, сильнее не получается. Попробуйте силу «Сильно».' : 'В PDF почти нет картинок: текст и так весит мало, сжимать нечего.') : 'Файл уже сжат, сильнее не получается. Попробуйте силу «Сильно».';
@@ -5372,7 +5381,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
         }
       } catch (e) { console.error(e); it.status = 'error'; it.note = friendly(e); }
       renderQueue();
-    }
+    });
   }
 
   $('go').addEventListener('click', async () => {
