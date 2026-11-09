@@ -35,13 +35,13 @@
   --ok: #18794e;
   --warn: #9a5b00;
   --err: #c2312b;
-  --fam-image: #0f8a7e;
-  --fam-doc: #3a55c9;
-  --fam-table: #2f8a3c;
-  --fam-pdf: #c2412b;
-  --fam-video: #8a3fc4;
-  --fam-audio: #a8620a;
-  --fam-other: #6b7280;
+  --fam-image: #0c6a61;
+  --fam-doc: #3853c8;
+  --fam-table: #256c2f;
+  --fam-pdf: #a73825;
+  --fam-video: #8239ba;
+  --fam-audio: #8b5108;
+  --fam-other: #5a606c;
   --display: "Unbounded", "Arial Black", system-ui, sans-serif;
   --body: "Golos Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
@@ -74,6 +74,9 @@ body {
   padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px));
 }
 .wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 22px; }
+.wrap > main { display: grid; gap: 22px; min-width: 0; }
+/* grid children may shrink below their content, so wide tables scroll inside instead of widening the page */
+.wrap > *, .wrap > main > *, .grid > * { min-width: 0; }
 button, select, input { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
@@ -88,8 +91,10 @@ h1 { font-family: var(--display); font-weight: 700; font-size: 28px; letter-spac
 .privacy svg { width: 14px; height: 14px; color: var(--ok); flex: none; }
 
 /* Mode tabs */
-.modes { display: inline-flex; gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; justify-self: start; max-width: 100%; }
-.modes button { border: 0; background: transparent; padding: 9px 16px; border-radius: 9px; cursor: pointer; display: flex; align-items: center; gap: 8px; color: var(--muted); font-weight: 500; }
+.modes { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; justify-self: start; max-width: 100%; }
+.modes button { border: 0; background: transparent; padding: 9px 16px; border-radius: 9px; cursor: pointer; display: flex; align-items: center; gap: 8px; color: var(--muted); font-weight: 500; white-space: nowrap; }
+/* between phone and wide screens the tabs share the rows evenly instead of leaving one hanging */
+@media (max-width: 1100px) { .modes { width: 100%; } .modes button { flex: 1 1 auto; justify-content: center; padding: 9px 12px; } }
 .modes button svg { width: 16px; height: 16px; flex: none; }
 .modes button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
 .modes button:not([aria-selected="true"]):hover { color: var(--ink); background: var(--sunken); }
@@ -143,7 +148,8 @@ h1 { font-family: var(--display); font-weight: 700; font-size: 28px; letter-spac
 .status-warn { color: var(--warn); }
 .status-err { color: var(--err); }
 .status-work { color: var(--accent); font-variant-numeric: tabular-nums; }
-.to { display: flex; align-items: center; gap: 8px; }
+.to { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.maplink { display: inline-block; padding: 6px 0; }
 .to .arrow { color: var(--muted); font-family: var(--mono); }
 .to .squeeze { font-size: 13px; color: var(--muted); white-space: nowrap; }
 select { background: var(--sunken); border: 1px solid var(--line); border-radius: 8px; padding: 6px 28px 6px 10px; font-family: var(--mono); font-weight: 500; font-size: 13px; cursor: pointer; appearance: none;
@@ -193,8 +199,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 input[type="number"], input[type="text"] { width: 100%; background: var(--sunken); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font-family: var(--mono); font-size: 13px; }
 input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; }
 input[type="color"] { width: 36px; height: 28px; border: 1px solid var(--line); border-radius: 6px; background: var(--sunken); padding: 2px; }
-.check { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; cursor: pointer; }
-.check input { margin-top: 3px; flex: none; }
+.check { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; cursor: pointer; padding: 4px 0; min-height: 28px; }
+.check input { margin-top: 1px; flex: none; width: 20px; height: 20px; }
 .hint { font-size: 12.5px; color: var(--muted); margin: 0; }
 .seg { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .seg button { flex: 1; border: 0; background: var(--sunken); padding: 6px 4px; font-family: var(--mono); font-size: 12.5px; cursor: pointer; color: var(--muted); }
@@ -211,6 +217,7 @@ table.matrix { width: 100%; border-collapse: collapse; font-size: 14px; }
 .matrix thead th { border-top: 0; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .matrix td .chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .matrix td:first-child { white-space: nowrap; font-weight: 500; }
+@media (max-width: 480px) { .matrix th, .matrix td { padding: 8px 10px; } .matrix td:first-child { white-space: normal; } }
 
 /* Toast */
 .toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 14px; max-width: calc(100% - 32px); box-shadow: 0 8px 24px rgb(0 0 0 / .2); z-index: 50; }
@@ -227,6 +234,8 @@ table.matrix { width: 100%; border-collapse: collapse; font-size: 14px; }
 .checker { background-color: #fff; background-image: linear-gradient(45deg, #d5d9df 25%, transparent 25%, transparent 75%, #d5d9df 75%), linear-gradient(45deg, #d5d9df 25%, transparent 25%, transparent 75%, #d5d9df 75%); background-size: 16px 16px; background-position: 0 0, 8px 8px; }
 .picker { position: fixed; inset: 0; z-index: 60; background: rgb(0 0 0 / .55); display: grid; place-items: center; padding: 16px; }
 .picker[hidden] { display: none; }
+/* the page under an open window doesn't scroll along with it (on phones especially) */
+body:has(.picker:not([hidden])) { overflow: hidden; }
 .picker-box { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; width: min(920px, 100%); max-height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; }
 .picker-head, .picker-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 16px; }
 .picker-head { justify-content: space-between; border-bottom: 1px solid var(--line); }
@@ -286,6 +295,7 @@ table.matrix { width: 100%; border-collapse: collapse; font-size: 14px; }
 .pe-h[data-h="sw"] { left: -9px; bottom: -9px; cursor: nesw-resize; } .pe-h[data-h="se"] { right: -9px; bottom: -9px; cursor: nwse-resize; }
 .pe-foot { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; padding: 12px 16px; border-top: 1px solid var(--line); }
 .pe-foot .seg { flex: 1 1 420px; }
+@media (max-width: 560px) { .pe-foot .seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); } .pe-foot .seg button + button { border-left: 0; } .pe-foot .seg button { padding: 8px 2px; white-space: nowrap; font-size: 12.5px; } .pe-foot .seg button:first-child, .pe-foot .seg button:last-child { grid-column: span 2; } }
 
 /* Viewer: any file opened on the page; before/after for compressed, cut-out and enlarged photos */
 [data-view], [data-rview] { cursor: zoom-in; }
@@ -361,7 +371,7 @@ details.tip[open] summary::after { content: "\2212"; }
 details.tip .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 details.tip ul { margin: 0 0 8px; padding-left: 18px; color: var(--muted); font-size: 13.5px; display: grid; gap: 5px; }
 .tips-more { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
-#more-wrap .btn { width: 100%; justify-content: center; }
+#more-wrap .btn, #reset-wrap .btn { width: 100%; justify-content: center; white-space: normal; text-align: center; }
 
 /* Trim editor */
 .tag-trim { font-family: var(--mono); font-size: 12px; color: var(--accent); background: var(--accent-soft); padding: 1px 6px; border-radius: 4px; font-variant-numeric: tabular-nums; }
@@ -418,9 +428,9 @@ button, select, summary, .drop { touch-action: manipulation; }
 .meta-sum.ok { color: var(--ok); }
 .mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
 .mgroup { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-width: 0; }
-.mgroup h4 { margin: 0 0 6px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.mgroup .mg-h { margin: 0 0 6px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .mgroup.place { border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); }
-.mgroup.place h4 { color: var(--warn); }
+.mgroup.place .mg-h { color: var(--warn); }
 .meta-li dl { margin: 0; display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); gap: 4px 12px; font-size: 13.5px; }
 .meta-li dt { color: var(--muted); }
 .meta-li dd { margin: 0; overflow-wrap: anywhere; }
@@ -460,6 +470,7 @@ details.more-help[open] { display: grid; gap: 8px; }
     </button>
     </div>
   </header>
+  <main>
 
   <div class="modes" role="tablist" aria-label="Режим">
     <button type="button" role="tab" id="tab-convert" data-mode="convert" aria-selected="true">
@@ -1005,6 +1016,7 @@ details.more-help[open] { display: grid; gap: 8px; }
       </table>
     </div>
   </section>
+  </main>
   <footer class="foot">Formater · файлы обрабатываются прямо в вашем браузере и никуда не загружаются</footer>
 </div>
 
@@ -1022,7 +1034,7 @@ details.more-help[open] { display: grid; gap: 8px; }
         <button class="btn primary" id="sg-done" type="button">Готово</button>
       </div>
     </div>
-    <div class="sg-stage" id="sg-stage"><div class="sg-page" id="sg-page"><canvas id="sg-canvas"></canvas><div class="sg-layer" id="sg-layer"></div></div></div>
+    <div class="sg-stage" id="sg-stage" tabindex="0"><div class="sg-page" id="sg-page"><canvas id="sg-canvas"></canvas><div class="sg-layer" id="sg-layer"></div></div></div>
     <div class="picker-foot"><p class="hint" id="sg-hint">Добавьте подпись, текст или дату и перетащите на место. Синий кружок в углу меняет размер, текст правится прямо на странице.</p></div>
   </div>
 </div>
@@ -1057,7 +1069,7 @@ details.more-help[open] { display: grid; gap: 8px; }
         <button class="icon-btn" id="bb-close" type="button" aria-label="Закрыть без сохранения"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
       </div>
     </div>
-    <div class="bb-stage" id="bb-stage"></div>
+    <div class="bb-stage" id="bb-stage" tabindex="0"></div>
     <div class="bb-foot">
       <div class="seg words" role="group" aria-label="Кисть" id="bb-mode">
         <button type="button" data-v="erase" aria-pressed="true">Стереть</button>
@@ -1084,7 +1096,7 @@ details.more-help[open] { display: grid; gap: 8px; }
         <button class="icon-btn" id="pe-close" type="button" aria-label="Закрыть без сохранения"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
       </div>
     </div>
-    <div class="bb-stage" id="pe-stage"><div class="pe-wrap" id="pe-wrap"><canvas id="pe-canvas"></canvas><div class="pe-box" id="pe-box"><span class="pe-h" data-h="nw"></span><span class="pe-h" data-h="ne"></span><span class="pe-h" data-h="sw"></span><span class="pe-h" data-h="se"></span></div></div></div>
+    <div class="bb-stage" id="pe-stage" tabindex="0"><div class="pe-wrap" id="pe-wrap"><canvas id="pe-canvas"></canvas><div class="pe-box" id="pe-box"><span class="pe-h" data-h="nw"></span><span class="pe-h" data-h="ne"></span><span class="pe-h" data-h="sw"></span><span class="pe-h" data-h="se"></span></div></div></div>
     <div class="pe-foot">
       <div class="seg words" role="group" aria-label="Пропорции" id="pe-aspect">
         <button type="button" data-a="free" aria-pressed="true">Свободно</button>
@@ -1111,7 +1123,7 @@ details.more-help[open] { display: grid; gap: 8px; }
         <button class="icon-btn" id="view-close" type="button" aria-label="Закрыть"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
       </div>
     </div>
-    <div class="view-stage" id="view-stage"></div>
+    <div class="view-stage" id="view-stage" tabindex="0"></div>
   </div>
 </div>
 
@@ -1126,7 +1138,7 @@ details.more-help[open] { display: grid; gap: 8px; }
         <button class="icon-btn" id="pg-close" type="button" aria-label="Закрыть без сохранения"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
       </div>
     </div>
-    <div class="view-stage top" id="pg-stage"><div class="pg-grid" id="pg-grid"></div></div>
+    <div class="view-stage top" id="pg-stage" tabindex="0"><div class="pg-grid" id="pg-grid"></div></div>
     <div class="picker-foot"><p class="hint">Перетаскивайте страницы, чтобы поменять порядок. ⟳ поворачивает страницу, × убирает её. Сам файл не меняется, пока вы не нажмёте «Сохранить».</p></div>
   </div>
 </div>
@@ -5316,7 +5328,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     return R.unread ? '<span class="status-warn">не удалось проверить EXIF: проверьте интернет. Удалить данные всё равно можно</span>' : '<span class="status-ok">личных данных нет</span>';
   }
   function metaDd(v) {
-    if (v && typeof v === 'object' && v.link) return `<dd><span class="mv">${esc(v.text)}</span><br><a href="${esc(v.link)}" target="_blank" rel="noopener noreferrer" title="OpenStreetMap">Открыть на карте</a></dd>`;
+    if (v && typeof v === 'object' && v.link) return `<dd><span class="mv">${esc(v.text)}</span><br><a class="maplink" href="${esc(v.link)}" target="_blank" rel="noopener noreferrer" title="OpenStreetMap">Открыть на карте</a></dd>`;
     return `<dd class="mv">${esc(typeof v === 'function' ? v() : String(v))}</dd>`;
   }
   function metaPanel(it) {
@@ -5327,7 +5339,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     const sum = found.length
       ? `<p class="meta-sum warn"><strong>Найдено:</strong> ${found.map(c => `<span>${FOUND[c]}</span>`).join(', ')}</p>`
       : '<p class="meta-sum ok">Личных данных не найдено</p>';
-    const groups = GROUPS.filter(g => R.groups[g]).map(g => `<section class="mgroup${g === 'Где снято' ? ' place' : ''}"><h4>${g}</h4><dl>${R.groups[g].map(([l, v]) => `<dt>${esc(l)}</dt>${metaDd(v)}`).join('')}</dl></section>`).join('');
+    const groups = GROUPS.filter(g => R.groups[g]).map(g => `<section class="mgroup${g === 'Где снято' ? ' place' : ''}"><h3 class="mg-h">${g}</h3><dl>${R.groups[g].map(([l, v]) => `<dt>${esc(l)}</dt>${metaDd(v)}`).join('')}</dl></section>`).join('');
     const raw = R.raw.length ? `<details class="mraw" data-mraw="${it.id}"${it.rawOpen ? ' open' : ''}><summary>Все поля <span class="mv">(${R.raw.length})</span></summary><dl>${R.raw.map(([k, v]) => `<dt class="mv">${esc(k)}</dt><dd class="mv">${esc(v)}</dd>`).join('')}</dl></details>` : '';
     return `<li class="meta-li">${sum}${groups ? `<div class="mgrid">${groups}</div>` : ''}${raw}</li>`;
   }
@@ -6013,6 +6025,19 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   $('queue').addEventListener('click', e => openRow('data-view', e));
   $('results').addEventListener('click', e => openRow('data-rview', e));
   [$('queue'), $('results')].forEach(l => l.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-view], [data-rview]')) { e.preventDefault(); e.target.click(); } }));
+
+  // Keyboard focus stays inside an open window: Tab past the last control comes back to the first
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Tab') return;
+    const open = [...document.querySelectorAll('.picker:not([hidden])')].pop();
+    if (!open) return;
+    const f = [...open.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')].filter(el => !el.disabled && el.offsetParent !== null);
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (!open.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+    else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
 
   // ---------- Theme: as the system, light or dark ----------
   // Drawn icons: the symbol characters are missing from the site's font on some systems
