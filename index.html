@@ -482,6 +482,10 @@ details.more-help[open] { display: grid; gap: 8px; }
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="8.5" width="6" height="6" rx="1"/><path d="M9.5 1.5h5v5M14.5 1.5 9 7"/></svg>
       Увеличить
     </button>
+    <button type="button" role="tab" id="tab-tools" data-mode="tools" aria-selected="false">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="1.5" width="5" height="5" rx="1"/><rect x="9.5" y="1.5" width="5" height="5" rx="1"/><rect x="1.5" y="9.5" width="5" height="5" rx="1"/><path d="M12 9.5v5M9.5 12h5"/></svg>
+      Ещё
+    </button>
     <button type="button" role="tab" id="tab-pdf" data-mode="pdf" aria-selected="false">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 1.5h5.5L13 5v9.5H4z"/><path d="M9.5 1.5V5H13M6.5 9h4M6.5 11.5h4"/></svg>
       PDF
@@ -894,6 +898,48 @@ details.more-help[open] { display: grid; gap: 8px; }
           </details>
         </div>
       </div>
+      <!-- More tools -->
+      <div data-for="tools" hidden>
+        <div class="set">
+          <h3>Инструмент</h3>
+          <div class="seg words" role="group" aria-label="Инструмент" id="xtool">
+            <button type="button" data-v="frames" aria-pressed="true">Кадры из видео</button>
+            <button type="button" data-v="collage" aria-pressed="false">Склеить фото</button>
+            <button type="button" data-v="favicon" aria-pressed="false">Значки сайта</button>
+          </div>
+          <p class="hint" id="xtool-hint"></p>
+        </div>
+        <div class="set" id="x-frames">
+          <h3>Кадры</h3>
+          <div class="field"><span id="fr-n-label">Сколько кадров</span>
+            <div class="seg words" role="group" aria-labelledby="fr-n-label" id="fr-n">
+              <button type="button" data-v="6" aria-pressed="false">6</button><button type="button" data-v="12" aria-pressed="true">12</button><button type="button" data-v="24" aria-pressed="false">24</button><button type="button" data-v="48" aria-pressed="false">48</button>
+            </div></div>
+          <div class="field"><span id="fr-out-label">Что сохранить</span>
+            <div class="seg words" role="group" aria-labelledby="fr-out-label" id="fr-out">
+              <button type="button" data-v="sheet" aria-pressed="true">Лист кадров</button><button type="button" data-v="files" aria-pressed="false">Кадры отдельно</button>
+            </div></div>
+          <p class="hint">Кадры берутся равномерно по всему ролику. Лист — одна картинка со всеми кадрами и временем, удобно для превью и обзора. Отдельно — каждый кадр в полном размере, в одном ZIP.</p>
+        </div>
+        <div class="set" id="x-collage" hidden>
+          <h3>Склейка</h3>
+          <div class="field"><span id="cl-lay-label">Как сложить</span>
+            <div class="seg words" role="group" aria-labelledby="cl-lay-label" id="cl-lay">
+              <button type="button" data-v="v" aria-pressed="true">Сверху вниз</button><button type="button" data-v="h" aria-pressed="false">В ряд</button><button type="button" data-v="grid" aria-pressed="false">Сеткой</button>
+            </div></div>
+          <div class="field"><span id="cl-gap-label">Промежутки</span>
+            <div class="seg words" role="group" aria-labelledby="cl-gap-label" id="cl-gap">
+              <button type="button" data-v="0" aria-pressed="true">Нет</button><button type="button" data-v="12" aria-pressed="false">Узкие</button><button type="button" data-v="32" aria-pressed="false">Широкие</button>
+            </div></div>
+          <div class="field-row"><label for="cl-bg">Цвет фона</label><input type="color" id="cl-bg" value="#ffffff"></div>
+          <p class="hint">Фото складываются в том порядке, в каком стоят в очереди. Сверху вниз удобно для длинных скриншотов переписки, сеткой — для подборки фото.</p>
+        </div>
+        <div class="set" id="x-favicon" hidden>
+          <h3>Значки сайта</h3>
+          <div class="field-row"><label for="fv-bg">Фон значка для iPhone</label><input type="color" id="fv-bg" value="#ffffff"></div>
+          <p class="hint">Из одной картинки получится полный набор: favicon.ico (16, 32 и 48 px), PNG 16 и 32, значок для iPhone 180 px, значки 192 и 512 px для Android, файл site.webmanifest и готовый код для вставки в &lt;head&gt;. Лучше всего квадратная картинка от 512 px.</p>
+        </div>
+      </div>
       <!-- Upscale -->
       <div data-for="up" hidden>
         <div class="set">
@@ -1279,7 +1325,7 @@ details.more-help[open] { display: grid; gap: 8px; }
   let pixelNote = false;
 
   // ---------- Settings ----------
-  const opts = { mode: 'convert', quality: 0.9, maxSide: 0, bg: '#ffffff', page: 'fit', merge: true, dpi: 150, sep: ';', gifw: 480, giff: 12, level: 'medium', cfmt: 'same', targetKb: 0, cmax: 0, vres: 'auto', mute: false, pdfPages: '', pdfJoin: false, pack: 'auto', bgq: 'hq', bgm: 'ai', bgcm: 'auto', bgc: '#ffffff', bgtol: 25, bgarea: 'edge', bgsoft: true, bbMode: 'erase', bgnew: 'none', bgfill: '#ffffff', bgblur: 60, ptool: 'merge', prot: 90, ptPages: '', mwhat: 'all', ocr: true, wmText: '', wmMode: 'diag', wmOpacity: 25, pnum: false, pnumPos: 'bc', pnumFmt: 'n', vlimit: 0, upx: 2, upfmt: 'same', asrModel: 'base', asrLang: 'russian' };
+  const opts = { mode: 'convert', quality: 0.9, maxSide: 0, bg: '#ffffff', page: 'fit', merge: true, dpi: 150, sep: ';', gifw: 480, giff: 12, level: 'medium', cfmt: 'same', targetKb: 0, cmax: 0, vres: 'auto', mute: false, pdfPages: '', pdfJoin: false, pack: 'auto', bgq: 'hq', bgm: 'ai', bgcm: 'auto', bgc: '#ffffff', bgtol: 25, bgarea: 'edge', bgsoft: true, bbMode: 'erase', bgnew: 'none', bgfill: '#ffffff', bgblur: 60, ptool: 'merge', prot: 90, ptPages: '', mwhat: 'all', ocr: true, wmText: '', wmMode: 'diag', wmOpacity: 25, pnum: false, pnumPos: 'bc', pnumFmt: 'n', vlimit: 0, upx: 2, upfmt: 'same', xtool: 'frames', frN: 12, frOut: 'sheet', clLay: 'v', clGap: 0, clBg: '#ffffff', fvBg: '#ffffff', asrModel: 'base', asrLang: 'russian' };
   const store = {
     get() { try { return JSON.parse(localStorage.getItem('formater-opts') || 'null'); } catch { return null; } },
     set(v) { try { localStorage.setItem('formater-opts', JSON.stringify(v)); } catch {} },
@@ -1488,7 +1534,7 @@ details.more-help[open] { display: grid; gap: 8px; }
   const PT_GO = { merge: 'Объединить', split: 'Разделить', extract: 'Выбрать страницы', rotate: 'Повернуть', protect: 'Поставить пароль', unlock: 'Снять пароль', sign: 'Сохранить', stamp: 'Добавить', pages: 'Сохранить' };
   function setGoLabel() {
     const m = opts.mode;
-    $('go-label').textContent = m === 'convert' ? 'Конвертировать' : m === 'compress' ? 'Сжать' : m === 'trim' ? 'Обрезать' : m === 'bg' ? 'Убрать фон' : m === 'up' ? 'Увеличить' : m === 'meta' ? (opts.mwhat === 'gps' ? 'Удалить место съёмки' : 'Удалить метаданные') : PT_GO[opts.ptool] || 'Объединить';
+    $('go-label').textContent = m === 'convert' ? 'Конвертировать' : m === 'compress' ? 'Сжать' : m === 'trim' ? 'Обрезать' : m === 'bg' ? 'Убрать фон' : m === 'up' ? 'Увеличить' : m === 'tools' ? ({ frames: 'Достать кадры', collage: 'Склеить', favicon: 'Сделать значки' }[opts.xtool] || 'Готово') : m === 'meta' ? (opts.mwhat === 'gps' ? 'Удалить место съёмки' : 'Удалить метаданные') : PT_GO[opts.ptool] || 'Объединить';
   }
   function resetDone() { items.forEach(it => { if (it.status === 'done' || it.status === 'error' || it.status === 'skip') { it.status = 'ready'; it.note = ''; } }); }
   function setMode(m) {
@@ -1497,8 +1543,10 @@ details.more-help[open] { display: grid; gap: 8px; }
     document.querySelectorAll('[data-for]').forEach(s => { s.hidden = s.dataset.for !== m; });
     setGoLabel();
     $('bulk-wrap').hidden = m !== 'convert';
-    $('drop-title').textContent = m === 'up' ? (COARSE ? 'Выберите фото' : 'Перетащите фото сюда') : m === 'meta' ? (COARSE ? 'Выберите файлы' : 'Перетащите файлы сюда') : m === 'pdf' ? (COARSE ? 'Выберите PDF или картинки' : 'Перетащите PDF или картинки сюда') : m === 'bg' ? (COARSE ? 'Выберите фото' : 'Перетащите фото сюда') : m === 'trim' ? (COARSE ? 'Выберите аудио или видео' : 'Перетащите аудио или видео сюда') : COARSE ? 'Выберите файлы' : 'Перетащите файлы сюда';
-    $('drop-text').textContent = m === 'up'
+    $('drop-title').textContent = m === 'tools' ? (opts.xtool === 'frames' ? (COARSE ? 'Выберите видео' : 'Перетащите видео сюда') : (COARSE ? 'Выберите фото' : 'Перетащите фото сюда')) : m === 'up' ? (COARSE ? 'Выберите фото' : 'Перетащите фото сюда') : m === 'meta' ? (COARSE ? 'Выберите файлы' : 'Перетащите файлы сюда') : m === 'pdf' ? (COARSE ? 'Выберите PDF или картинки' : 'Перетащите PDF или картинки сюда') : m === 'bg' ? (COARSE ? 'Выберите фото' : 'Перетащите фото сюда') : m === 'trim' ? (COARSE ? 'Выберите аудио или видео' : 'Перетащите аудио или видео сюда') : COARSE ? 'Выберите файлы' : 'Перетащите файлы сюда';
+    $('drop-text').textContent = m === 'tools'
+      ? ({ frames: 'Кадры возьмутся равномерно по всему ролику.', collage: 'Несколько фото склеятся в одну картинку.', favicon: 'Из картинки получится набор значков для сайта.' }[opts.xtool] || '')
+      : m === 'up'
       ? (COARSE ? 'Нажмите и выберите маленькое или нечёткое фото. Оно станет больше и чётче.' : 'или нажмите, чтобы выбрать. Маленькое или нечёткое фото станет больше и чётче.')
       : m === 'meta'
       ? (COARSE ? 'Нажмите и выберите фото, видео, аудио или документы. Покажем, что в них спрятано.' : 'или нажмите, чтобы выбрать. Фото, видео, аудио, PDF, Word и Excel.')
@@ -1526,7 +1574,26 @@ details.more-help[open] { display: grid; gap: 8px; }
   let seq = 0;
   let busy = false;
 
+  // A ZIP dropped on the page is opened: what is inside goes to the queue
+  const ZIP_MIME = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', svg: 'image/svg+xml', avif: 'image/avif', pdf: 'application/pdf', mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime', mp3: 'audio/mpeg', wav: 'audio/wav', m4a: 'audio/mp4', ogg: 'audio/ogg', txt: 'text/plain', md: 'text/markdown', html: 'text/html', csv: 'text/csv', json: 'application/json' };
+  async function unzipToQueue(file) {
+    try {
+      await need('jszip');
+      const z = await window.JSZip.loadAsync(file), out = [];
+      for (const e of Object.values(z.files)) {
+        if (e.dir || /(^|\/)(__MACOSX|\.DS_Store|Thumbs\.db)/.test(e.name)) continue;
+        const name = e.name.split('/').pop(), ext = extOf(name);
+        out.push(new File([await e.async('blob')], name, { type: ZIP_MIME[ext] || '' }));
+        if (out.length >= 500) break;
+      }
+      if (!out.length) { toast(`В архиве ${file.name} нет файлов.`); return; }
+      addFiles(out); toast(`Из ${file.name}: ${files(out.length)} добавлено в очередь`);
+    } catch (e) { console.error(e); toast(`Не удалось открыть архив ${file.name}: он повреждён или защищён паролем.`); }
+  }
   function addFiles(list, sample = false) {
+    const zips = [...list].filter(f => extOf(f.name) === 'zip');
+    zips.forEach(unzipToQueue);
+    if (zips.length) list = [...list].filter(f => extOf(f.name) !== 'zip');
     for (const file of list) {
       const ext = extOf(file.name);
       const kind = KIND[ext] || null;
@@ -1595,10 +1662,10 @@ details.more-help[open] { display: grid; gap: 8px; }
 
   function renderQueue() {
     const q = $('queue');
-    const compress = opts.mode === 'compress', trimMode = opts.mode === 'trim', bgMode = opts.mode === 'bg', upMode = opts.mode === 'up', pdfMode = opts.mode === 'pdf', metaMode = opts.mode === 'meta';
+    const compress = opts.mode === 'compress', trimMode = opts.mode === 'trim', bgMode = opts.mode === 'bg', upMode = opts.mode === 'up', toolsMode = opts.mode === 'tools', pdfMode = opts.mode === 'pdf', metaMode = opts.mode === 'meta';
     $('q-count').textContent = items.length ? files(items.length) : '';
     if (!items.length) {
-      q.innerHTML = `<li class="empty">${upMode ? 'Добавьте фото, которое нужно увеличить.' : metaMode ? 'Добавьте файлы, чтобы увидеть, что в них спрятано: место съёмки, дата, камера, автор.' : pdfMode ? 'Добавьте PDF, с которыми нужно что-то сделать.' : bgMode ? 'Добавьте фото, у которых нужно убрать фон.' : trimMode ? 'Добавьте аудио или видео, которое нужно обрезать.' : compress ? 'Добавьте фото, видео или аудио, которые нужно сделать легче.' : 'Добавьте файлы, и они появятся здесь.'}</li>`;
+      q.innerHTML = `<li class="empty">${toolsMode ? ({ frames: 'Добавьте видео, из которого нужны кадры.', collage: 'Добавьте фото, которые нужно склеить.', favicon: 'Добавьте картинку для значков сайта.' }[opts.xtool]) : upMode ? 'Добавьте фото, которое нужно увеличить.' : metaMode ? 'Добавьте файлы, чтобы увидеть, что в них спрятано: место съёмки, дата, камера, автор.' : pdfMode ? 'Добавьте PDF, с которыми нужно что-то сделать.' : bgMode ? 'Добавьте фото, у которых нужно убрать фон.' : trimMode ? 'Добавьте аудио или видео, которое нужно обрезать.' : compress ? 'Добавьте фото, видео или аудио, которые нужно сделать легче.' : 'Добавьте файлы, и они появятся здесь.'}</li>`;
     } else {
       q.innerHTML = items.map(it => {
         const fam = FAMILY[it.kind] || 'other';
@@ -1617,6 +1684,8 @@ details.more-help[open] { display: grid; gap: 8px; }
         }
         else if (!it.kind) status = '<span class="status-err">Этот формат пока не поддерживается</span>';
         else if (trimMode && it.kind !== 'audio' && it.kind !== 'video') status = '<span class="status-warn">В этой вкладке только аудио и видео</span>';
+        else if (toolsMode && !toolOk(it)) status = `<span class="status-warn">${opts.xtool === 'frames' ? 'Здесь нужно видео' : 'Здесь нужны фото'}</span>`;
+        else if (toolsMode) right = `<div class="to">${it.kind === 'image' ? editBtn : trimBtn}<span class="squeeze">${{ frames: opts.frOut === 'sheet' ? 'лист кадров' : `${opts.frN} кадров`, collage: 'в склейку', favicon: 'набор значков' }[opts.xtool]}</span></div>`;
         else if ((bgMode || upMode) && !bgOk(it)) status = '<span class="status-warn">В этой вкладке только фото</span>';
         else if (upMode) { const ext = upExt(it); right = `<div class="to">${editBtn}<span class="squeeze">в ${opts.upx} раза, в</span>${chip(ext, 'image')}</div>`; }
         else if (bgMode) {
@@ -1655,7 +1724,7 @@ details.more-help[open] { display: grid; gap: 8px; }
     }
     const union = [...new Set(items.flatMap(it => it.kind ? targetsFor(it.ext, it.kind) : []))].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
     $('bulk').innerHTML = '<option value="">—</option>' + union.map(t => `<option value="${t}">${LABEL[t]}</option>`).join('');
-    const workable = metaMode ? items.some(metaOk) : pdfMode ? items.some(pdfOk) : (bgMode || upMode) ? items.some(bgOk) : trimMode ? items.some(it => it.kind === 'audio' || it.kind === 'video') : compress ? items.some(it => !compressPlan(it).no) : items.some(it => it.kind);
+    const workable = toolsMode ? items.some(toolOk) : metaMode ? items.some(metaOk) : pdfMode ? items.some(pdfOk) : (bgMode || upMode) ? items.some(bgOk) : trimMode ? items.some(it => it.kind === 'audio' || it.kind === 'video') : compress ? items.some(it => !compressPlan(it).no) : items.some(it => it.kind);
     $('go').disabled = !workable || busy;
     $('go').hidden = busy; $('stop').hidden = !busy;
     $('clear').disabled = busy;
@@ -1760,6 +1829,17 @@ details.more-help[open] { display: grid; gap: 8px; }
       image: { title: 'Фото и картинки', items: [
         'Картинки при объединении становятся страницами PDF, каждая своего размера.',
         'Удобно собрать фото документов или чеков в один файл для отправки.',
+      ] },
+    },
+    tools: {
+      image: { title: 'Фото и картинки', items: [
+        ['Склейка берёт фото в порядке очереди. Удалите лишние крестиком.', () => opts.xtool === 'collage'],
+        ['Значок лучше делать из квадратной картинки без мелких деталей: в 16 px они пропадут.', () => opts.xtool === 'favicon'],
+        'Значок рамки у фото: обрезать перед склейкой или перед значками.',
+      ] },
+      video: { title: 'Видео', items: [
+        'Лист кадров — быстрый способ показать, что в ролике, не отправляя сам ролик.',
+        'Ножницы у видео: кадры возьмутся только с выбранного участка.',
       ] },
     },
     up: {
@@ -4194,6 +4274,154 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       renderQueue();
     }
   }
+  // ---------- More tools: frames from a video, photos glued into one, a website icon set ----------
+  const toolOk = it => opts.xtool === 'frames' ? it.kind === 'video' : (it.kind === 'image' && it.ext !== 'svg') || (opts.xtool === 'favicon' && it.ext === 'svg');
+  const XTOOL_HINT = {
+    frames: 'Из видео получится лист с кадрами или сами кадры в полном размере. Видео никуда не загружается.',
+    collage: 'Несколько фото станут одной картинкой: лентой, рядом или сеткой.',
+    favicon: 'Из одной картинки получится набор значков для сайта и код для вставки.',
+  };
+  function xtoolUi() {
+    ['frames', 'collage', 'favicon'].forEach(k => { $('x-' + k).hidden = opts.xtool !== k; });
+    $('xtool-hint').textContent = XTOOL_HINT[opts.xtool];
+    $('cl-bg').value = opts.clBg; $('fv-bg').value = opts.fvBg;
+    if (opts.mode === 'tools') setMode('tools');
+  }
+  bindSeg('xtool', 'xtool', String, () => { xtoolUi(); renderQueue(); });
+  bindSeg('fr-n', 'frN', Number, () => renderQueue());
+  bindSeg('fr-out', 'frOut', String, () => renderQueue());
+  bindSeg('cl-lay', 'clLay', String);
+  bindSeg('cl-gap', 'clGap', Number);
+  $('cl-bg').addEventListener('input', e => { opts.clBg = e.target.value; store.set(opts); });
+  $('fv-bg').addEventListener('input', e => { opts.fvBg = e.target.value; store.set(opts); });
+  syncers.push(xtoolUi); xtoolUi();
+  const tstamp = t => { const s = Math.floor(t), m = Math.floor(s / 60); return `${m}:${String(s % 60).padStart(2, '0')}`; };
+  // Frames by seeking a <video>: works for everything the browser plays, and it is fast
+  async function videoFrames(item) {
+    const url = URL.createObjectURL(item.file), v = document.createElement('video');
+    v.muted = true; v.preload = 'auto'; v.playsInline = true; v.src = url;
+    try {
+      await new Promise((res, rej) => { v.onloadeddata = res; v.onerror = () => rej(new Error('Этот видеоформат браузер не открывает. Сначала переведите его в MP4 на вкладке «Конвертировать».')); setTimeout(() => rej(new Error('Видео не открылось за 30 секунд.')), 30000); });
+      const tr = activeTrim(item), t0 = tr ? tr.start : 0, t1 = tr && tr.end != null ? tr.end : v.duration;
+      if (!isFinite(t1) || t1 <= t0) throw new Error('Не удалось узнать длину видео.');
+      const N = opts.frN, W = v.videoWidth, H = v.videoHeight, out = [];
+      const full = opts.frOut === 'files', k = full ? Math.min(1, 1920 / Math.max(W, H)) : Math.min(1, 480 / W);
+      for (let i = 0; i < N; i++) {
+        if (stopRequested) throw new Stopped();
+        setNote(item, `кадр ${i + 1} из ${N} ${Math.round(i / N * 100)}%`);
+        const t = t0 + (t1 - t0) * (i + 0.5) / N;
+        await new Promise(res => { const done = () => { v.removeEventListener('seeked', done); res(); }; v.addEventListener('seeked', done); v.currentTime = t; setTimeout(done, 8000); });
+        const c = document.createElement('canvas'); c.width = Math.round(W * k); c.height = Math.round(H * k);
+        const g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(v, 0, 0, c.width, c.height);
+        out.push({ c, t });
+      }
+      return { frames: out, dur: t1 - t0, W, H };
+    } finally { v.removeAttribute('src'); v.load(); URL.revokeObjectURL(url); }
+  }
+  async function framesJob(item) {
+    const { frames, dur, W, H } = await videoFrames(item), base = baseOf(item.file.name);
+    if (opts.frOut === 'files') {
+      const list = [];
+      for (const [i, f] of frames.entries()) list.push([`${base}-${String(i + 1).padStart(2, '0')}-${tstamp(f.t).replace(':', 'm')}s.jpg`, await encodeCanvas(f.c, 'jpg', 0.9)]);
+      return [{ name: `${base}${WORD('-кадры')}.zip`, blob: await zipOf(list, true) }];
+    }
+    // A contact sheet: the frames in a grid with their time, and the file's name and length on top
+    const n = frames.length, cols = n <= 6 ? 3 : n <= 24 ? 4 : 6, rows = Math.ceil(n / cols), fw = frames[0].c.width, fh = frames[0].c.height, gap = 8, head = 44;
+    const c = document.createElement('canvas'); c.width = cols * fw + (cols + 1) * gap; c.height = head + rows * fh + (rows + 1) * gap;
+    const g = c.getContext('2d'); g.fillStyle = '#16181d'; g.fillRect(0, 0, c.width, c.height);
+    g.fillStyle = '#ffffff'; g.font = '600 18px Arial, sans-serif'; g.textBaseline = 'middle';
+    g.fillText(`${item.file.name}  ·  ${tstamp(dur)}  ·  ${W}×${H}  ·  ${fmtSize(item.file.size)}`, gap + 4, head / 2 + 2);
+    frames.forEach((f, i) => {
+      const x = gap + (i % cols) * (fw + gap), y = head + gap + Math.floor(i / cols) * (fh + gap);
+      g.drawImage(f.c, x, y);
+      const label = tstamp(f.t); g.font = '600 14px Arial, sans-serif'; const tw = g.measureText(label).width;
+      g.fillStyle = 'rgba(0,0,0,.65)'; g.fillRect(x + fw - tw - 14, y + fh - 24, tw + 10, 20); g.fillStyle = '#fff'; g.fillText(label, x + fw - tw - 9, y + fh - 14);
+    });
+    return [{ name: `${base}${WORD('-кадры')}.jpg`, blob: await encodeCanvas(c, 'jpg', 0.88) }];
+  }
+  async function collageJob(list) {
+    const pics = [];
+    for (const it of list) { const d = await decodeItem(it); try { pics.push(drawImage(d, false, 2400)); } finally { d.done(); } }
+    // the usual photo's width (or height) sets the strip, so one tiny or huge picture doesn't decide for all
+    const gap = opts.clGap, lay = opts.clLay, n = pics.length;
+    let cw, ch, place = [];
+    if (lay === 'v') { const w = Math.min(1600, median(pics.map(p => p.width))); let y = gap; pics.forEach(p => { const h = Math.round(p.height * w / p.width); place.push([gap, y, w, h]); y += h + gap; }); cw = w + gap * 2; ch = y; }
+    else if (lay === 'h') { const h = Math.min(1600, median(pics.map(p => p.height))); let x = gap; pics.forEach(p => { const w = Math.round(p.width * h / p.height); place.push([x, gap, w, h]); x += w + gap; }); cw = x; ch = h + gap * 2; }
+    else {
+      // a grid of equal cells, each photo filling its cell (cropped to it, centred)
+      const cols = Math.ceil(Math.sqrt(n)), rows = Math.ceil(n / cols), cell = Math.min(900, Math.round(2400 / cols));
+      pics.forEach((p, i) => place.push([gap + (i % cols) * (cell + gap), gap + Math.floor(i / cols) * (cell + gap), cell, cell, true]));
+      cw = cols * cell + (cols + 1) * gap; ch = rows * cell + (rows + 1) * gap;
+    }
+    // very long strips are scaled to stay within what a canvas can hold
+    const k = Math.min(1, 16000 / Math.max(cw, ch), Math.sqrt(MAX_PIXELS / (cw * ch)));
+    const c = document.createElement('canvas'); c.width = Math.round(cw * k); c.height = Math.round(ch * k);
+    const g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.fillStyle = opts.clBg; g.fillRect(0, 0, c.width, c.height);
+    pics.forEach((p, i) => {
+      const [x, y, w, h, cover] = place[i];
+      if (cover) { const s = Math.max(w / p.width, h / p.height), sw = w / s, sh = h / s; g.drawImage(p, (p.width - sw) / 2, (p.height - sh) / 2, sw, sh, x * k, y * k, w * k, h * k); }
+      else g.drawImage(p, x * k, y * k, w * k, h * k);
+      p.width = p.height = 0;
+    });
+    return { name: `${WORD('склейка')}-${n}.jpg`, blob: await encodeCanvas(c, 'jpg', 0.9) };
+  }
+  // ICO with several sizes inside, each a PNG (what every browser and Windows understand)
+  async function icoMulti(src, sizes) {
+    const pngs = [];
+    for (const s of sizes) pngs.push([s, new Uint8Array(await (await canvasBlob(squareIcon(src, s), 'image/png')).arrayBuffer())]);
+    const head = new ArrayBuffer(6 + 16 * pngs.length), v = new DataView(head);
+    v.setUint16(2, 1, true); v.setUint16(4, pngs.length, true);
+    let off = head.byteLength;
+    pngs.forEach(([s, b], i) => { const o = 6 + i * 16; v.setUint8(o, s >= 256 ? 0 : s); v.setUint8(o + 1, s >= 256 ? 0 : s); v.setUint16(o + 4, 1, true); v.setUint16(o + 6, 32, true); v.setUint32(o + 8, b.length, true); v.setUint32(o + 12, off, true); off += b.length; });
+    return new Blob([head, ...pngs.map(p => p[1])], { type: 'image/x-icon' });
+  }
+  function squareIcon(src, s, fill, pad = 0) {
+    const c = document.createElement('canvas'); c.width = c.height = s;
+    const g = c.getContext('2d'); g.imageSmoothingQuality = 'high';
+    if (fill) { g.fillStyle = fill; g.fillRect(0, 0, s, s); }
+    const inner = s * (1 - pad * 2), k = Math.min(inner / src.width, inner / src.height), w = src.width * k, h = src.height * k;
+    // big steps down blur small icons, so the picture is halved until it is close to the size
+    let cur = src; while (cur.width > w * 2.2) { const t = document.createElement('canvas'); t.width = Math.round(cur.width / 2); t.height = Math.round(cur.height / 2); const tg = t.getContext('2d'); tg.imageSmoothingQuality = 'high'; tg.drawImage(cur, 0, 0, t.width, t.height); cur = t; }
+    g.drawImage(cur, (s - w) / 2, (s - h) / 2, w, h);
+    return c;
+  }
+  async function faviconJob(item) {
+    const d = await decodeItem(item); let src;
+    try { src = drawImage(d, false, 1024); } finally { d.done(); }
+    const png = async (s, fill, pad) => canvasBlob(squareIcon(src, s, fill, pad), 'image/png');
+    const manifest = { name: baseOf(item.file.name), short_name: baseOf(item.file.name).slice(0, 12), icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }, { src: '/icon-512.png', sizes: '512x512', type: 'image/png' }, { src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }], theme_color: opts.fvBg, background_color: opts.fvBg, display: 'standalone' };
+    const head = `<!-- Вставьте в <head> страницы, а файлы положите в корень сайта -->\n<link rel="icon" href="/favicon.ico" sizes="48x48">\n<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">\n<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">\n<link rel="apple-touch-icon" href="/apple-touch-icon.png">\n<link rel="manifest" href="/site.webmanifest">\n`;
+    const list = [
+      ['favicon.ico', await icoMulti(src, [16, 32, 48])],
+      ['favicon-16x16.png', await png(16)], ['favicon-32x32.png', await png(32)],
+      ['apple-touch-icon.png', await png(180, opts.fvBg, 0.06)],
+      ['icon-192.png', await png(192)], ['icon-512.png', await png(512)],
+      ['icon-maskable-512.png', await png(512, opts.fvBg, 0.12)], // Android crops these into circles, so the picture keeps a safe margin
+      ['site.webmanifest', new Blob([JSON.stringify(manifest, null, 2)], { type: 'application/manifest+json' })],
+      [WORD('подключение') + '.html', new Blob([head], { type: 'text/html' })],
+    ];
+    return { name: `${baseOf(item.file.name)}${WORD('-значки')}.zip`, blob: await zipOf(list) };
+  }
+  async function runTools(todo) {
+    if (opts.xtool === 'collage') {
+      if (todo.length < 2) { toast('Для склейки нужно хотя бы два фото.'); return; }
+      todo.forEach(it => { it.status = 'working'; it.note = 'склеиваю'; }); renderQueue();
+      try { addResult(await raceStop(collageJob(todo))); todo.forEach(it => { it.status = 'done'; it.note = 'в склейке'; }); }
+      catch (e) { console.error(e); todo.forEach(it => { it.status = 'error'; it.note = friendly(e); }); }
+      renderQueue(); return;
+    }
+    for (const it of todo) {
+      if (stopRequested) { it.status = 'error'; it.note = 'Остановлено'; continue; }
+      it.status = 'working'; it.note = ''; renderQueue(); await tick();
+      try {
+        const outs = opts.xtool === 'frames' ? await raceStop(framesJob(it)) : [await raceStop(faviconJob(it))];
+        outs.forEach(o => addResult(o, undefined, true)); renderResults();
+        it.status = 'done'; it.note = opts.xtool === 'frames' ? `${opts.frN} кадров` : '9 файлов в ZIP';
+      } catch (e) { console.error(e); it.status = 'error'; it.note = friendly(e); }
+      renderQueue();
+    }
+  }
+
   async function runBg(todo) {
     if (opts.bgnew === 'image' && !bgPhoto) { toast('Выберите картинку для нового фона в настройках справа.'); return; }
     for (const it of todo) {
@@ -5583,7 +5811,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   }
 
   $('go').addEventListener('click', async () => {
-    const todo = items.filter(it => opts.mode === 'meta' ? metaOk(it) : opts.mode === 'pdf' ? pdfOk(it) : opts.mode === 'trim' ? (it.kind === 'audio' || it.kind === 'video') : (opts.mode === 'bg' || opts.mode === 'up') ? bgOk(it) : it.kind);
+    const todo = items.filter(it => opts.mode === 'meta' ? metaOk(it) : opts.mode === 'pdf' ? pdfOk(it) : opts.mode === 'trim' ? (it.kind === 'audio' || it.kind === 'video') : (opts.mode === 'bg' || opts.mode === 'up') ? bgOk(it) : opts.mode === 'tools' ? toolOk(it) : it.kind);
     if (!todo.length || busy) return;
     busy = true; stopRequested = false; $('stop').disabled = false;
     holdScreen(true);
@@ -5591,7 +5819,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     todo.forEach(it => { it.status = 'ready'; it.note = ''; });
     renderQueue();
     try {
-      if (opts.mode === 'compress') await runCompress(todo); else if (opts.mode === 'trim') await runTrim(todo); else if (opts.mode === 'bg') await runBg(todo); else if (opts.mode === 'up') await runUpscale(todo); else if (opts.mode === 'pdf') await runPdfTools(todo); else if (opts.mode === 'meta') await runMeta(todo); else await runConvert(todo);
+      if (opts.mode === 'compress') await runCompress(todo); else if (opts.mode === 'trim') await runTrim(todo); else if (opts.mode === 'bg') await runBg(todo); else if (opts.mode === 'up') await runUpscale(todo); else if (opts.mode === 'tools') await runTools(todo); else if (opts.mode === 'pdf') await runPdfTools(todo); else if (opts.mode === 'meta') await runMeta(todo); else await runConvert(todo);
     } finally {
       busy = false; holdScreen(false); renderQueue();
     }
@@ -5828,7 +6056,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
   $('matrix').innerHTML = MATRIX.map(([label, ins, outs]) =>
     `<tr><td>${label}</td><td><div class="chips">${ins.map(e => chip(e, FAMILY[KIND[e]] || 'other')).join('')}</div></td><td><div class="chips">${outs.map(e => chip(e, OUT_FAMILY[e] || 'other')).join('')}</div></td></tr>`).join('');
 
-  setMode(['compress', 'trim', 'bg', 'up', 'pdf', 'meta'].includes(opts.mode) ? opts.mode : 'convert');
+  setMode(['compress', 'trim', 'bg', 'up', 'tools', 'pdf', 'meta'].includes(opts.mode) ? opts.mode : 'convert');
 
   // ---------- App: works offline, installs like an app, takes files from the phone's "Share" menu ----------
   // Not inside Claude's preview (window.claude): a service worker belongs to the real site only
