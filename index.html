@@ -3355,7 +3355,12 @@ details.more-help[open] { display: grid; gap: 8px; }
       }));
       return wb;
     }
-    return X.read(new Uint8Array(await item.file.arrayBuffer()), { type: 'array', cellDates: true });
+    const bytes = new Uint8Array(await item.file.arrayBuffer());
+    // SheetJS reads almost anything as a one-column text table; a damaged Excel file has to fail, not turn into rubbish
+    const zip = bytes[0] === 0x50 && bytes[1] === 0x4b;  // .xls is left alone: real ones are sometimes HTML or plain text inside
+    if (!bytes.length) throw new Error('Файл пустой.');
+    if (['xlsx', 'xlsm', 'ods', 'numbers'].includes(item.ext) && !zip) throw new Error('Файл таблицы повреждён: внутри нет данных Excel.');
+    return X.read(bytes, { type: 'array', cellDates: true });
   }
   function flat(v) { return v !== null && typeof v === 'object' ? JSON.stringify(v) : v; }
   function sheetRows(ws) { return window.XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' }); }
@@ -3413,7 +3418,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     doc.querySelectorAll('script,iframe,object,embed,link,meta,base,style,form,noscript,frame,frameset').forEach(n => n.remove());
     doc.querySelectorAll('*').forEach(el => {
       for (const a of [...el.attributes]) {
-        if (/^on/i.test(a.name) || (/^(href|src|xlink:href|action|formaction)$/i.test(a.name) && /^\s*javascript:/i.test(a.value))) el.removeAttribute(a.name);
+        if (/^on/i.test(a.name) || a.name === 'srcdoc' || (/^(href|src|xlink:href|action|formaction|to|from|values)$/i.test(a.name) && /^\s*(javascript|vbscript):/i.test(a.value.replace(/[\s\u0000-\u001f]+/g, '')))) el.removeAttribute(a.name);
       }
     });
     return doc;
@@ -5399,7 +5404,8 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
       try { return { name: `${base}.${out}`, blob: await encodeCanvas(drawImage(d, out === 'jpg', 0), out, 0.92), redrawn: out }; } finally { d.done(); }
     }
     if (['webm', 'mkv', 'ogg', 'oga', 'opus', 'weba'].includes(ext)) return { name: `${base}.${ext}`, blob: await remuxClean(it) };
-    throw new Error('Этот формат пока не поддерживается');
+    // the format is one we handle, so getting here means the file itself couldn't be read
+    throw new Error('Не получилось прочитать файл: он повреждён или в необычном формате.');
   }
   async function runMeta(todo) {
     const gpsOnly = opts.mwhat === 'gps';
@@ -5819,6 +5825,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     for (const it of todo) {
       if (stopRequested) { it.status = 'error'; it.note = 'Остановлено'; continue; }
       const t = activeTrim(it);
+      if (!t && it.waveState === 'none' && !it.dur) { it.status = 'error'; it.note = 'Не удалось прочитать файл: он повреждён или браузер не знает этот формат.'; continue; }
       if (!t) { it.status = 'skip'; it.note = 'Сначала выберите участок: потяните края на волне или впишите время.'; continue; }
       it.status = 'working'; it.note = ''; renderQueue();
       await tick();
@@ -5866,9 +5873,12 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     holdScreen(true);
     clearResults();
     todo.forEach(it => { it.status = 'ready'; it.note = ''; });
+    // a 0-byte file (a failed download, a cloud placeholder) gets a plain answer instead of an empty result
+    const work = todo.filter(it => it.file.size || (it.status = 'error', it.note = 'Файл пустой: в нём 0 байт.', false));
     renderQueue();
     try {
-      if (opts.mode === 'compress') await runCompress(todo); else if (opts.mode === 'trim') await runTrim(todo); else if (opts.mode === 'bg') await runBg(todo); else if (opts.mode === 'up') await runUpscale(todo); else if (opts.mode === 'tools') await runTools(todo); else if (opts.mode === 'pdf') await runPdfTools(todo); else if (opts.mode === 'meta') await runMeta(todo); else await runConvert(todo);
+      if (!work.length) {}
+      else if (opts.mode === 'compress') await runCompress(work); else if (opts.mode === 'trim') await runTrim(work); else if (opts.mode === 'bg') await runBg(work); else if (opts.mode === 'up') await runUpscale(work); else if (opts.mode === 'tools') await runTools(work); else if (opts.mode === 'pdf') await runPdfTools(work); else if (opts.mode === 'meta') await runMeta(work); else await runConvert(work);
     } finally {
       busy = false; holdScreen(false); renderQueue();
     }
@@ -5877,7 +5887,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
     if (ok) {
       toast(stopRequested ? `Остановлено. Готово: ${files(ok)}` : `Готово: ${files(ok)}`);
       if (window.matchMedia('(max-width: 860px)').matches) $('results-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    } else if (!stopRequested && todo.some(it => it.status === 'error')) toast('Ни один файл не получилось обработать. Причина написана под каждым файлом.');
   });
 
   // ---------- Results ----------
