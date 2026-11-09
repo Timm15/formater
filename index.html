@@ -639,6 +639,7 @@ details.more-help[open] { display: grid; gap: 8px; }
               <button type="button" data-v="same" aria-pressed="true">Как был</button>
               <button type="button" data-v="webp" aria-pressed="false">WEBP</button>
               <button type="button" data-v="jpg" aria-pressed="false">JPG</button>
+              <button type="button" data-v="avif" aria-pressed="false">AVIF</button>
             </div>
           </div>
           <div class="field">
@@ -1090,11 +1091,11 @@ details.more-help[open] { display: grid; gap: 8px; }
     json: 'json', md: 'md', markdown: 'md', html: 'html', htm: 'html', docx: 'docx', txt: 'txt', log: 'txt',
   };
   const FAMILY = { image: 'image', video: 'video', audio: 'audio', pdf: 'pdf', sheet: 'table', json: 'table', md: 'doc', html: 'doc', docx: 'doc', txt: 'doc' };
-  const OUT_FAMILY = { srt: 'doc', png: 'image', jpg: 'image', webp: 'image', gif: 'image', bmp: 'image', ico: 'image', pdf: 'pdf', mp4: 'video', webm: 'video', mov: 'video', mkv: 'video', mp3: 'audio', wav: 'audio', ogg: 'audio', m4a: 'audio', csv: 'table', xlsx: 'table', ods: 'table', json: 'table', html: 'doc', md: 'doc', txt: 'doc', docx: 'doc', zip: 'other' };
-  const LABEL = { srt: 'SRT', png: 'PNG', jpg: 'JPG', webp: 'WEBP', gif: 'GIF', bmp: 'BMP', ico: 'ICO', pdf: 'PDF', mp4: 'MP4', webm: 'WEBM', mov: 'MOV', mkv: 'MKV', mp3: 'MP3', wav: 'WAV', ogg: 'OGG', m4a: 'M4A', txt: 'TXT', csv: 'CSV', xlsx: 'XLSX', ods: 'ODS', json: 'JSON', html: 'HTML', md: 'MD', docx: 'DOCX' };
-  const ORDER = ['png', 'jpg', 'webp', 'gif', 'bmp', 'ico', 'pdf', 'mp4', 'webm', 'mov', 'mkv', 'mp3', 'wav', 'ogg', 'm4a', 'docx', 'xlsx', 'ods', 'csv', 'json', 'html', 'md', 'txt', 'srt'];
+  const OUT_FAMILY = { avif: 'image', srt: 'doc', png: 'image', jpg: 'image', webp: 'image', gif: 'image', bmp: 'image', ico: 'image', pdf: 'pdf', mp4: 'video', webm: 'video', mov: 'video', mkv: 'video', mp3: 'audio', wav: 'audio', ogg: 'audio', m4a: 'audio', csv: 'table', xlsx: 'table', ods: 'table', json: 'table', html: 'doc', md: 'doc', txt: 'doc', docx: 'doc', zip: 'other' };
+  const LABEL = { avif: 'AVIF', srt: 'SRT', png: 'PNG', jpg: 'JPG', webp: 'WEBP', gif: 'GIF', bmp: 'BMP', ico: 'ICO', pdf: 'PDF', mp4: 'MP4', webm: 'WEBM', mov: 'MOV', mkv: 'MKV', mp3: 'MP3', wav: 'WAV', ogg: 'OGG', m4a: 'M4A', txt: 'TXT', csv: 'CSV', xlsx: 'XLSX', ods: 'ODS', json: 'JSON', html: 'HTML', md: 'MD', docx: 'DOCX' };
+  const ORDER = ['png', 'jpg', 'webp', 'avif', 'gif', 'bmp', 'ico', 'pdf', 'mp4', 'webm', 'mov', 'mkv', 'mp3', 'wav', 'ogg', 'm4a', 'docx', 'xlsx', 'ods', 'csv', 'json', 'html', 'md', 'txt', 'srt'];
   const MATRIX = [
-    ['Фото и картинки', ['jpg', 'png', 'webp', 'heic', 'gif', 'bmp', 'tiff', 'svg', 'avif', 'ico'], ['png', 'jpg', 'webp', 'gif', 'bmp', 'ico', 'pdf', 'docx', 'txt']],
+    ['Фото и картинки', ['jpg', 'png', 'webp', 'heic', 'gif', 'bmp', 'tiff', 'svg', 'avif', 'ico'], ['png', 'jpg', 'webp', 'avif', 'gif', 'bmp', 'ico', 'pdf', 'docx', 'txt']],
     ['Видео', ['mp4', 'mov', 'webm', 'mkv', 'm4v', 'ts', 'ogv', '3gp'], ['mp4', 'webm', 'mov', 'mkv', 'gif', 'mp3', 'wav', 'ogg', 'm4a', 'txt', 'srt']],
     ['Аудио', ['mp3', 'wav', 'm4a', 'ogg', 'opus', 'flac', 'aac'], ['mp3', 'wav', 'ogg', 'm4a', 'txt', 'srt']],
     ['PDF', ['pdf'], ['docx', 'png', 'jpg', 'txt']],
@@ -1115,7 +1116,7 @@ details.more-help[open] { display: grid; gap: 8px; }
   function targetsFor(ext, kind, keepOwn = false) {
     const e = normExt(ext);
     const list = {
-      image: ['png', 'jpg', 'webp', 'gif', 'bmp', 'ico', 'pdf', 'docx', 'txt'],
+      image: ['png', 'jpg', 'webp', 'avif', 'gif', 'bmp', 'ico', 'pdf', 'docx', 'txt'],
       video: ['mp4', 'webm', 'mov', 'mkv', 'gif', 'mp3', 'wav', 'ogg', 'm4a', 'txt', 'srt'],
       audio: ['mp3', 'wav', 'ogg', 'm4a', 'txt', 'srt'],
       pdf: ['docx', 'png', 'jpg', 'txt'],
@@ -1610,6 +1611,7 @@ details.more-help[open] { display: grid; gap: 8px; }
         ['HEIC с iPhone лучше перевести в JPG: он откроется везде.', () => items.some(i => /^hei[cf]$/.test(i.ext))],
         ['PNG хранит прозрачность, у JPG её нет: пустые места зальются цветом из настроек.', 'image:jpg,bmp,pdf'],
         'WEBP легче JPG примерно на треть, он подходит для сайтов.',
+        'AVIF ещё легче WEBP, обычно в 2–4 раза меньше JPG при том же виде. Открывается во всех современных браузерах и на телефонах.',
         'Значок рамки у фото: обрезать, повернуть, отразить. Есть готовые размеры фото на документы 3×4 см и 35×45 мм.',
         ['Несколько картинок в PDF соберутся в один документ. Это можно выключить в настройках.', () => items.filter(i => i.kind === 'image' && i.target === 'pdf').length > 1],
         ['ICO нужен для значков сайта: картинка вписывается в квадрат до 256 px.', 'image:ico'],
@@ -2256,13 +2258,91 @@ details.more-help[open] { display: grid; gap: 8px; }
   $('queue').addEventListener('click', e => { const b = e.target.closest('[data-pedit]'); if (!b || busy) return; const it = items.find(i => i.id === +b.dataset.pedit); if (it) openPedit(it); });
   window.addEventListener('resize', () => { if (!$('pedit').hidden) peRender(); });
 
-  const MIME = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp' };
-  async function encodeCanvas(c, target, q) {
+  const MIME = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp', avif: 'image/avif' };
+  // ---------- Better encoders: MozJPEG, libwebp, libavif and OxiPNG (Squoosh codecs via jSquash, Apache 2.0) ----------
+  // They run in workers, a few at once, so the page doesn't freeze and several photos are encoded in parallel.
+  // MozJPEG and libwebp give files 10–30 % smaller than the browser at the same quality; OxiPNG squeezes PNG without loss
+  const SQ = { jpeg: '@jsquash/jpeg@1.6.0/codec/enc/', webp: '@jsquash/webp@1.5.0/codec/enc/', avif: '@jsquash/avif@2.1.1/codec/enc/', oxipng: '@jsquash/oxipng@2.3.0/codec/pkg/' };
+  const SQ_WORKER = `
+    const JPEG = { quality: 75, baseline: false, arithmetic: false, progressive: true, optimize_coding: true, smoothing: 0, color_space: 3, quant_table: 3, trellis_multipass: false, trellis_opt_zero: false, trellis_opt_table: false, trellis_loops: 1, auto_subsample: true, chroma_subsample: 2, separate_chroma_quality: false, chroma_quality: 75 };
+    const WEBP = { quality: 75, target_size: 0, target_PSNR: 0, method: 4, sns_strength: 50, filter_strength: 60, filter_sharpness: 0, filter_type: 1, partitions: 0, segments: 4, pass: 1, show_compressed: 0, preprocessing: 0, autofilter: 0, partition_limit: 0, alpha_compression: 1, alpha_filtering: 1, alpha_quality: 100, lossless: 0, exact: 0, image_hint: 0, emulate_jpeg_size: 0, thread_level: 0, low_memory: 0, near_lossless: 100, use_delta_palette: 0, use_sharp_yuv: 0 };
+    const AVIF = { quality: 50, qualityAlpha: -1, denoiseLevel: 0, tileColsLog2: 0, tileRowsLog2: 0, speed: 7, subsample: 1, chromaDeltaQ: false, sharpness: 0, tune: 0, enableSharpYUV: false, bitDepth: 8, lossless: false };
+    const mods = {};
+    const em = (key, url) => mods[key] || (mods[key] = import(url).then(m => m.default({ noInitialRun: true })));
+    // WebAssembly SIMD makes libwebp about twice as fast; every current browser has it
+    const simd = WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,1,123,3,2,1,0,10,10,1,8,0,65,0,253,15,253,98,11]));
+    self.onmessage = async ({ data: m }) => {
+      try {
+        let out;
+        if (m.kind === 'jpg') out = (await em('jpg', m.base.jpeg + 'mozjpeg_enc.js')).encode(m.data, m.w, m.h, { ...JPEG, quality: m.q, chroma_quality: m.q });
+        else if (m.kind === 'webp') out = (await em('webp', m.base.webp + (simd ? 'webp_enc_simd.js' : 'webp_enc.js'))).encode(m.data, m.w, m.h, { ...WEBP, quality: m.q });
+        else if (m.kind === 'avif') out = (await em('avif', m.base.avif + 'avif_enc.js')).encode(m.data, m.w, m.h, { ...AVIF, quality: m.q });
+        else if (m.kind === 'png') {
+          if (!mods.ox) mods.ox = import(m.base.oxipng + 'squoosh_oxipng.js').then(async x => { await x.default(); return x; });
+          out = (await mods.ox).optimise(m.data, m.level, false, false);
+        }
+        if (!out) throw new Error('encode');
+        const buf = out.buffer.byteLength === out.byteLength ? out.buffer : out.slice().buffer;
+        self.postMessage({ id: m.id, buf }, [buf]);
+      } catch (e) { self.postMessage({ id: m.id, error: String((e && e.message) || e) }); }
+    };`;
+  const sq = { workers: [], queue: [], seq: 0, broken: false };
+  function sqPool() {
+    if (!sq.workers.length) {
+      const url = URL.createObjectURL(new Blob([SQ_WORKER], { type: 'text/javascript' }));
+      const n = Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1, COARSE ? 2 : 4));
+      for (let i = 0; i < n; i++) {
+        const w = new Worker(url, { type: 'module' }), slot = { w, job: null };
+        w.onmessage = ({ data: r }) => { const j = slot.job; slot.job = null; if (j) (r.error ? j.rej(new Error(r.error)) : j.res(r.buf)); sqNext(); };
+        w.onerror = () => { const j = slot.job; slot.job = null; if (j) j.rej(new Error('worker')); sqNext(); };
+        sq.workers.push(slot);
+      }
+      URL.revokeObjectURL(url);
+    }
+    return sq.workers;
+  }
+  function sqNext() {
+    for (const slot of sq.workers) {
+      if (slot.job || !sq.queue.length) continue;
+      const j = sq.queue.shift(); slot.job = j;
+      slot.w.postMessage(j.msg, j.transfer);
+    }
+  }
+  function sqRun(msg, transfer) {
+    sqPool();
+    return new Promise((res, rej) => { sq.queue.push({ msg: { ...msg, id: ++sq.seq, base: Object.fromEntries(Object.entries(SQ).map(([k, v]) => [k, CDN + v])) }, transfer, res, rej }); sqNext(); });
+  }
+  // Quality 0…1 as everywhere on the site → the codec's own scale. AVIF at 50 looks like JPEG at about 80, so its scale is shifted
+  async function encodeBest(c, target, q) {
+    if (target === 'png') {
+      const raw = new Uint8Array(await (await canvasBlob(c, 'image/png')).arrayBuffer());
+      return new Blob([await sqRun({ kind: 'png', data: raw, level: c.width * c.height > 4e6 ? 1 : 2 }, [raw.buffer])], { type: 'image/png' });
+    }
+    const img = c.getContext('2d').getImageData(0, 0, c.width, c.height);
+    const qq = Math.round(target === 'avif' ? Math.min(90, Math.max(20, q * 100 - 28)) : Math.min(100, Math.max(5, q * 100)));
+    const buf = await sqRun({ kind: target, data: img.data, w: c.width, h: c.height, q: qq }, [img.data.buffer]);
+    return new Blob([buf], { type: MIME[target] });
+  }
+  async function encodeCanvas(c, target, q, best = true) {
     if (target === 'gif') return gifFromCanvas(c);
     if (target === 'bmp') return bmpFromCanvas(c);
     if (target === 'ico') return icoFromCanvas(c);
+    // AVIF always needs the codec; JPG and WEBP use it when they can and fall back to the browser's own encoder
+    // JPG: MozJPEG (about a fifth smaller than the browser's encoder at the same look). AVIF: only the codec can.
+    // WEBP: the browser already uses libwebp, so the codec is only for browsers that can't save WEBP at all (Safari)
+    if (target === 'avif' || (best && !sq.broken && target === 'jpg')) {
+      try { return await encodeBest(c, target, q ?? 0.82); }
+      catch (e) {
+        console.warn('codec', target, e);
+        if (target === 'avif') throw new Error('Не удалось загрузить кодировщик AVIF. Проверьте интернет или выберите WEBP.');
+        sq.broken = true;
+      }
+    }
     const blob = await canvasBlob(c, MIME[target], target === 'png' ? undefined : q);
-    if (blob.type !== MIME[target]) throw new Error(`Этот браузер не умеет сохранять ${LABEL[target]}. Попробуйте Chrome, Edge или Firefox.`);
+    if (blob.type !== MIME[target]) {
+      if (target === 'webp') { try { return await encodeBest(c, 'webp', q ?? 0.82); } catch (e) { console.warn('codec webp', e); } }
+      throw new Error(`Этот браузер не умеет сохранять ${LABEL[target]}. Попробуйте Chrome, Edge или Firefox.`);
+    }
     return blob;
   }
   async function gifFromCanvas(c) {
@@ -5034,7 +5114,7 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
         out = document.createElement('canvas'); out.width = Math.max(1, Math.round(c.width * k)); out.height = Math.max(1, Math.round(c.height * k));
         const g = out.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(c, 0, 0, out.width, out.height);
       }
-      const jpg = new Uint8Array(await (await canvasBlob(out, 'image/jpeg', q)).arrayBuffer());
+      const jpg = new Uint8Array(await (await encodeCanvas(out, 'jpg', q)).arrayBuffer());
       const nw = out.width, nh = out.height;
       c.width = c.height = 0; out.width = out.height = 0;
       if (jpg.length > obj.contents.length * 0.9) continue; // not worth it: the old one stays
@@ -5084,6 +5164,8 @@ blockquote{border-left:3px solid #c9ced6;margin:1em 0;padding:0 1em;color:#4b526
           if (!opts.targetKb || blob.size <= opts.targetKb * 1024 || colors <= 16) break;
           colors = Math.max(16, colors >> 1);
         }
+        // OxiPNG then repacks the file without any loss: usually another 5–20 %
+        try { setNote(item, 'дожимаю PNG'); const raw = new Uint8Array(await blob.arrayBuffer()); const sq2 = new Blob([await sqRun({ kind: 'png', data: raw, level: c.width * c.height > 4e6 ? 1 : 2 }, [raw.buffer])], { type: 'image/png' }); if (sq2.size < blob.size) blob = sq2; } catch (e) { console.warn('oxipng', e); }
         return { name: `${base}.png`, blob };
       }
       const fill = out === 'jpg';
